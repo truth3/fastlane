@@ -1,3 +1,4 @@
+# coding: utf-8
 # rubocop:disable Metrics/AbcSize
 module Fastlane
   module Actions
@@ -7,19 +8,19 @@ module Fastlane
     class UpdateProjectProvisioningAction < Action
       ROOT_CERTIFICATE_URL = "http://www.apple.com/appleca/AppleIncRootCertificate.cer"
       def self.run(params)
-        Helper.log.info "You’re updating provisioning profiles directly in your project, but have you considered easier ways to do code signing?"
-        Helper.log.info "https://github.com/fastlane/fastlane/blob/master/docs/CodeSigning.md"
+        UI.message("You’re updating provisioning profiles directly in your project, but have you considered easier ways to do code signing?")
+        UI.message("https://github.com/fastlane/fastlane/blob/master/fastlane/docs/CodeSigning.md")
 
         # assign folder from parameter or search for xcodeproj file
         folder = params[:xcodeproj] || Dir["*.xcodeproj"].first
 
         # validate folder
         project_file_path = File.join(folder, "project.pbxproj")
-        raise "Could not find path to project config '#{project_file_path}'. Pass the path to your project (not workspace)!".red unless File.exist?(project_file_path)
+        UI.user_error!("Could not find path to project config '#{project_file_path}'. Pass the path to your project (not workspace)!") unless File.exist?(project_file_path)
 
         # download certificate
         unless File.exist?(params[:certificate])
-          Helper.log.info("Downloading root certificate from (#{ROOT_CERTIFICATE_URL}) to path '#{params[:certificate]}'")
+          UI.message("Downloading root certificate from (#{ROOT_CERTIFICATE_URL}) to path '#{params[:certificate]}'")
           require 'open-uri'
           File.open(params[:certificate], "w") do |file|
             file.write(open(ROOT_CERTIFICATE_URL, "rb").read)
@@ -27,11 +28,11 @@ module Fastlane
         end
 
         # parsing mobileprovision file
-        Helper.log.info("Parsing mobile provisioning profile from '#{params[:profile]}'")
+        UI.message("Parsing mobile provisioning profile from '#{params[:profile]}'")
         profile = File.read(params[:profile])
         p7 = OpenSSL::PKCS7.new(profile)
         store = OpenSSL::X509::Store.new
-        raise "Could not find valid certificate at '#{params[:certificate]}'" unless File.size(params[:certificate]) > 0
+        UI.user_error!("Could not find valid certificate at '#{params[:certificate]}'") unless File.size(params[:certificate]) > 0
         cert = OpenSSL::X509::Certificate.new(File.read(params[:certificate]))
         store.add_cert(cert)
         p7.verify([cert], store)
@@ -41,24 +42,24 @@ module Fastlane
         configuration = params[:build_configuration]
 
         # manipulate project file
-        Helper.log.info("Going to update project '#{folder}' with UUID".green)
+        UI.success("Going to update project '#{folder}' with UUID")
         require 'xcodeproj'
 
         project = Xcodeproj::Project.open(folder)
         project.targets.each do |target|
           if !target_filter || target.product_name.match(target_filter) || (target.respond_to?(:product_type) && target.product_type.match(target_filter))
-            Helper.log.info "Updating target #{target.product_name}...".green
+            UI.success("Updating target #{target.product_name}...")
           else
-            Helper.log.info "Skipping target #{target.product_name} as it doesn't match the filter '#{target_filter}'".yellow
+            UI.important("Skipping target #{target.product_name} as it doesn't match the filter '#{target_filter}'")
             next
           end
 
           target.build_configuration_list.build_configurations.each do |build_configuration|
             config_name = build_configuration.name
             if !configuration || config_name.match(configuration)
-              Helper.log.info "Updating configuration #{config_name}...".green
+              UI.success("Updating configuration #{config_name}...")
             else
-              Helper.log.info "Skipping configuration #{config_name} as it doesn't match the filter '#{configuration}'".yellow
+              UI.important("Skipping configuration #{config_name} as it doesn't match the filter '#{configuration}'")
               next
             end
 
@@ -69,7 +70,7 @@ module Fastlane
         project.save
 
         # complete
-        Helper.log.info("Successfully updated project settings in'#{params[:xcodeproj]}'".green)
+        UI.success("Successfully updated project settings in'#{params[:xcodeproj]}'")
       end
 
       def self.description
@@ -94,14 +95,14 @@ module Fastlane
                                        description: "Path to your Xcode project",
                                        optional: true,
                                        verify_block: proc do |value|
-                                         raise "Path to xcode project is invalid".red unless File.exist?(value)
+                                         UI.user_error!("Path to xcode project is invalid") unless File.exist?(value)
                                        end),
           FastlaneCore::ConfigItem.new(key: :profile,
                                        env_name: "FL_PROJECT_PROVISIONING_PROFILE_FILE",
                                        description: "Path to provisioning profile (.mobileprovision)",
                                        default_value: Actions.lane_context[SharedValues::SIGH_PROFILE_PATH],
                                        verify_block: proc do |value|
-                                         raise "Path to provisioning profile is invalid".red unless File.exist?(value)
+                                         UI.user_error!("Path to provisioning profile is invalid") unless File.exist?(value)
                                        end),
           FastlaneCore::ConfigItem.new(key: :target_filter,
                                        env_name: "FL_PROJECT_PROVISIONING_PROFILE_TARGET_FILTER",

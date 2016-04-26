@@ -6,7 +6,7 @@ module Fastlane
 
     class GetGithubReleaseAction < Action
       def self.run(params)
-        Helper.log.info "Getting release on GitHub (#{params[:server_url]}/#{params[:url]}: #{params[:version]})"
+        UI.message("Getting release on GitHub (#{params[:server_url]}/#{params[:url]}: #{params[:version]})")
         require 'excon'
         require 'base64'
 
@@ -19,14 +19,14 @@ module Fastlane
 
         case response[:status]
         when 404
-          Helper.log.error "Repository #{params[:url]} cannot be found, please double check its name and that you provided a valid API token (if it's a private repository).".red
+          UI.error("Repository #{params[:url]} cannot be found, please double check its name and that you provided a valid API token (if it's a private repository).")
           return nil
         when 401
-          Helper.log.error "You are not authorized to access #{params[:url]}, please make sure you provided a valid API token.".red
+          UI.error("You are not authorized to access #{params[:url]}, please make sure you provided a valid API token.")
           return nil
         else
           if response[:status] != 200
-            Helper.log.error "GitHub responded with #{response[:status]}:#{response[:body]}".red
+            UI.error("GitHub responded with #{response[:status]}:#{response[:body]}")
             return nil
           end
         end
@@ -37,11 +37,11 @@ module Fastlane
 
           # Found it
           Actions.lane_context[SharedValues::GET_GITHUB_RELEASE_INFO] = current
-          Helper.log.info "Version is already live on GitHub.com 🚁"
+          UI.message("Version is already live on GitHub.com 🚁")
           return current
         end
 
-        Helper.log.info "Couldn't find GitHub release #{params[:version]}".yellow
+        UI.important("Couldn't find GitHub release #{params[:version]}")
         return nil
       end
 
@@ -110,8 +110,8 @@ module Fastlane
                                        env_name: "FL_GET_GITHUB_RELEASE_URL",
                                        description: "The path to your repo, e.g. 'KrauseFx/fastlane'",
                                        verify_block: proc do |value|
-                                         raise "Please only pass the path, e.g. 'KrauseFx/fastlane'".red if value.include? "github.com"
-                                         raise "Please only pass the path, e.g. 'KrauseFx/fastlane'".red if value.split('/').count != 2
+                                         UI.user_error!("Please only pass the path, e.g. 'KrauseFx/fastlane'") if value.include? "github.com"
+                                         UI.user_error!("Please only pass the path, e.g. 'KrauseFx/fastlane'") if value.split('/').count != 2
                                        end),
           FastlaneCore::ConfigItem.new(key: :server_url,
                                        env_name: "FL_GITHUB_RELEASE_SERVER_URL",
@@ -119,7 +119,7 @@ module Fastlane
                                        default_value: "https://api.github.com",
                                        optional: true,
                                        verify_block: proc do |value|
-                                         raise "Please include the protocol in the server url, e.g. https://your.github.server".red unless value.include? "//"
+                                         UI.user_error!("Please include the protocol in the server url, e.g. https://your.github.server") unless value.include? "//"
                                        end),
           FastlaneCore::ConfigItem.new(key: :version,
                                        env_name: "FL_GET_GITHUB_RELEASE_VERSION",

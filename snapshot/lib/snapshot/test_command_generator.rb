@@ -24,7 +24,7 @@ module Snapshot
       def project_path_array
         proj = Snapshot.project.xcodebuild_parameters
         return proj if proj.count > 0
-        raise "No project/workspace found"
+        UI.user_error!("No project/workspace found")
       end
 
       def options
@@ -53,7 +53,7 @@ module Snapshot
       end
 
       def pipe
-        ["| tee '#{xcodebuild_log_path}' | xcpretty #{Snapshot.config[:xcpretty_args]}"]
+        ["| tee #{xcodebuild_log_path.shellescape} | xcpretty #{Snapshot.config[:xcpretty_args]}"]
       end
 
       def device_udid(device)
@@ -88,7 +88,7 @@ module Snapshot
       end
 
       def derived_data_path
-        Snapshot.cache[:derived_data_path] ||= Dir.mktmpdir("snapshot_derived")
+        Snapshot.cache[:derived_data_path] ||= (Snapshot.config[:derived_data_path] || Dir.mktmpdir("snapshot_derived"))
       end
     end
   end

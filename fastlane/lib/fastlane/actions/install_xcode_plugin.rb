@@ -10,8 +10,8 @@ module Fastlane
         FileUtils.mkdir_p(plugins_path)
         Action.sh "unzip -qo '#{zip_path}' -d '#{plugins_path}'"
 
-        Helper.log.info("Plugin #{File.basename(params[:url], '.zip')} installed successfully".green)
-        Helper.log.info("Please restart Xcode to use the newly installed plugin")
+        UI.success("Plugin #{File.basename(params[:url], '.zip')} installed successfully")
+        UI.message("Please restart Xcode to use the newly installed plugin")
       end
 
       #####################################################
@@ -28,8 +28,8 @@ module Fastlane
                                        env_name: "FL_XCODE_PLUGIN_URL",
                                        description: "URL for Xcode plugin ZIP file",
                                        verify_block: proc do |value|
-                                         raise "No URL for InstallXcodePluginAction given, pass using `url: 'url'`".red if value.to_s.length == 0
-                                         raise "URL doesn't use HTTPS".red unless value.start_with?("https://")
+                                         UI.user_error!("No URL for InstallXcodePluginAction given, pass using `url: 'url'`") if value.to_s.length == 0
+                                         UI.user_error!("URL doesn't use HTTPS") unless value.start_with?("https://")
                                        end)
         ]
       end

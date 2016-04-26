@@ -1,3 +1,5 @@
+require 'shellwords'
+
 module Fastlane
   module Actions
     module SharedValues
@@ -5,42 +7,67 @@ module Fastlane
 
     class VerifyXcodeAction < Action
       def self.run(params)
-        Helper.log.info "Verifying your Xcode installation at path '#{params[:xcode_path]}'...".green
+        UI.message("Verifying your Xcode installation at path '#{params[:xcode_path]}'...")
 
         # Check 1/2
-
-        Helper.log.info "Verifying Xcode was signed by Apple Inc.".green
-        command = "codesign --display --verbose=4 '#{params[:xcode_path]}'"
-
-        must_includes = [
-          "Identifier=com.apple.dt.Xcode",
-          "Authority=Apple Mac OS Application Signing",
-          "Authority=Apple Worldwide Developer Relations Certification Authority",
-          "Authority=Apple Root CA",
-          "TeamIdentifier=59GAB85EFG"
-        ]
-
-        verify(command: command, must_includes: must_includes, params: params)
-
-        Helper.log.info "Successfully verified the code signature".green
+        verify_codesign(params)
 
         # Check 2/2
         # More information https://developer.apple.com/news/?id=09222015a
-        Helper.log.info "Verifying Xcode using GateKeeper..."
-        Helper.log.info "This will take up to a few minutes, now is a great time to go for a coffee ☕...".green
+        verify_gatekeeper(params)
 
-        command = "/usr/sbin/spctl --assess --verbose '#{params[:xcode_path]}'"
+        true
+      end
+
+      def self.verify_codesign(params)
+        UI.message("Verifying Xcode was signed by Apple Inc.")
+
+        codesign_output = Actions.sh("codesign --display --verbose=4 #{params[:xcode_path].shellescape}")
+
+        # If the returned codesign info contains all entries for any one of these sets, we'll consider it valid
+        accepted_codesign_detail_sets = [
+          [ # Found on App Store installed Xcode installations
+            "Identifier=com.apple.dt.Xcode",
+            "Authority=Apple Mac OS Application Signing",
+            "Authority=Apple Worldwide Developer Relations Certification Authority",
+            "Authority=Apple Root CA",
+            "TeamIdentifier=59GAB85EFG"
+          ],
+          [ # Found on Xcode installations downloaded from developer.apple.com
+            "Identifier=com.apple.dt.Xcode",
+            "Authority=Software Signing",
+            "Authority=Apple Code Signing Certification Authority",
+            "Authority=Apple Root CA",
+            "TeamIdentifier=not set"
+          ]
+        ]
+
+        # Map the accepted details sets into an equal number of sets collecting the details for which
+        # the output of codesign did not have matches
+        missing_details_sets = accepted_codesign_detail_sets.map do |accepted_details_set|
+          accepted_details_set.reject { |detail| codesign_output.include?(detail) }
+        end
+
+        # If any of the sets is empty, it means that all details were matched, and the check is successful
+        show_and_raise_error(nil, params[:xcode_path]) unless missing_details_sets.any?(&:empty?)
+
+        UI.success("Successfully verified the code signature ✅")
+      end
+
+      def self.verify_gatekeeper(params)
+        UI.message("Verifying Xcode using GateKeeper...")
+        UI.message("This will take up to a few minutes, now is a great time to go for a coffee ☕...")
+
+        command = "/usr/sbin/spctl --assess --verbose #{params[:xcode_path].shellescape}"
         must_includes = ['accepted']
 
         output = verify(command: command, must_includes: must_includes, params: params)
 
         if output.include?("source=Mac App Store") or output.include?("source=Apple") or output.include?("source=Apple System")
-          Helper.log.info "Successfully verified Xcode installation at path '#{params[:xcode_path]}' 🎧".green
+          UI.success("Successfully verified Xcode installation at path '#{params[:xcode_path]}' 🎧")
         else
           show_and_raise_error("Invalid Download Source of Xcode: #{output}", params[:xcode_path])
         end
-
-        true
       end
 
       def self.verify(command: nil, must_includes: nil, params: nil)
@@ -60,11 +87,13 @@ module Fastlane
       end
 
       def self.show_and_raise_error(error, xcode_path)
-        Helper.log.fatal "Attention: Your Xcode Installation might be hacked.".red
-        Helper.log.fatal "This might be a false alarm, if so, please submit an issue on GitHub".red
-        Helper.log.fatal "The following information couldn't be found:".red
-        Helper.log.fatal error.yellow
-        raise "The Xcode installation at path '#{xcode_path}' might be compromised."
+        UI.error("Attention: Your Xcode Installation could not be verified.")
+        UI.error("If you believe that your Xcode is valid, please submit an issue on GitHub")
+        if error
+          UI.error("The following information couldn't be found:")
+          UI.error(error)
+        end
+        UI.user_error!("The Xcode installation at path '#{xcode_path}' could not be verified.")
       end
 
       #####################################################
@@ -77,7 +106,7 @@ module Fastlane
 
       def self.details
         [
-          "This action was implemented after the recent Xcode attacked to make sure",
+          "This action was implemented after the recent Xcode attack to make sure",
           "you're not using a hacked Xcode installation.",
           "http://researchcenter.paloaltonetworks.com/2015/09/novel-malware-xcodeghost-modifies-xcode-infects-apple-ios-apps-and-hits-app-store/"
         ].join("\n")
@@ -90,7 +119,7 @@ module Fastlane
                                        description: "The path to the Xcode installation to test",
                                        default_value: File.expand_path('../../', FastlaneCore::Helper.xcode_path),
                                        verify_block: proc do |value|
-                                         raise "Couldn't find Xcode at path '#{value}'".red unless File.exist?(value)
+                                         UI.user_error!("Couldn't find Xcode at path '#{value}'") unless File.exist?(value)
                                        end)
         ]
       end

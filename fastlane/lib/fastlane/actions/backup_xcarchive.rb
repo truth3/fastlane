@@ -29,7 +29,7 @@ module Fastlane
         # Save archive to destination
         if zipped
           Dir.mktmpdir("backup_xcarchive") do |dir|
-            Helper.log.info "Compressing #{xcarchive}"
+            UI.message("Compressing #{xcarchive}")
             xcarchive_folder = File.expand_path(File.dirname(xcarchive))
             xcarchive_file = File.basename(xcarchive)
             zip_file = File.join(dir, "#{xcarchive_file}.zip")
@@ -66,14 +66,14 @@ module Fastlane
                                        optional: false,
                                        env_name: 'BACKUP_XCARCHIVE_ARCHIVE',
                                        verify_block: proc do |value|
-                                         raise "Couldn't find xcarchive file at path '#{value}'".red if !Helper.test? && !File.exist?(value)
+                                         UI.user_error!("Couldn't find xcarchive file at path '#{value}'") if !Helper.test? && !File.exist?(value)
                                        end),
           FastlaneCore::ConfigItem.new(key: :destination,
                                        description: 'Where your archive will be placed',
                                        optional: false,
                                        env_name: 'BACKUP_XCARCHIVE_DESTINATION',
                                        verify_block: proc do |value|
-                                         raise "Couldn't find the destination folder at '#{value}'".red if !Helper.test? && !File.directory?(value) && !File.exist?(value)
+                                         UI.user_error!("Couldn't find the destination folder at '#{value}'") if !Helper.test? && !File.directory?(value) && !File.exist?(value)
                                        end),
           FastlaneCore::ConfigItem.new(key: :zip,
                                        description: 'Enable compression of the archive. Default value `true`',

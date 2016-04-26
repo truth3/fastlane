@@ -4,7 +4,8 @@ module Fastlane
       def self.run(options)
         paths = [
           Actions.lane_context[Actions::SharedValues::IPA_OUTPUT_PATH],
-          Actions.lane_context[Actions::SharedValues::DSYM_OUTPUT_PATH]
+          Actions.lane_context[Actions::SharedValues::DSYM_OUTPUT_PATH],
+          Actions.lane_context[Actions::SharedValues::CERT_FILE_PATH]
         ]
 
         paths += Actions.lane_context[Actions::SharedValues::SIGH_PROFILE_PATHS] || []
@@ -16,11 +17,11 @@ module Fastlane
             next if file.match(options[:exclude_pattern])
           end
 
-          Helper.log.debug "Cleaning up '#{file}'".yellow
+          UI.verbose("Cleaning up '#{file}'")
           File.delete(file)
         end
 
-        Helper.log.info 'Cleaned up build artifacts 🐙'.green
+        UI.success('Cleaned up build artifacts 🐙')
       end
 
       def self.available_options
@@ -34,7 +35,7 @@ module Fastlane
       end
 
       def self.description
-        "Deletes files created as result of running ipa or sigh"
+        "Deletes files created as result of running ipa, cert, sigh or download_dsyms"
       end
 
       def self.author

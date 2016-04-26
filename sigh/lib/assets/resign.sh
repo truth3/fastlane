@@ -85,10 +85,38 @@ function checkStatus {
     fi
 }
 
+usage() {
+    echo "Usage: $(basename $0) source identity -p|--provisioning provisioning [-e|--entitlements entitlements] [-k|--keychain keychain] [-d|--display-name displayName] [-n|--version-number version] [-b|--bundle-id bundleId] outputIpa" >&2
+    echo "Usage: $(basename $0) -h|--help" >&2
+    echo "Options:" >&2
+    echo -e "\t-p, --provisioning provisioning\t\tProvisioning profile option, may be provided multiple times." >&2
+    echo -e "\t\t\t\t\t\tYou can specify provisioning profile file name." >&2
+    echo -e "\t\t\t\t\t\t\t-p xxx.mobileprovision" >&2
+    echo "" >&2
+    echo -e "\t\t\t\t\t\tAlternatively you may provide multiple provisioning profiles if the application contains" >&2
+    echo -e "\t\t\t\t\t\tnested applications or app extensions, which need their own provisioning" >&2
+    echo -e "\t\t\t\t\t\tprofile. You can do so by providing -p option multiple times specifying" >&2
+    echo -e "\t\t\t\t\t\told bundle identifier and new provisioning profile for that bundle id joined with '='." >&2
+    echo -e "\t\t\t\t\t\t\t-p com.main-app=main-app.mobileprovision" >&2
+    echo -e "\t\t\t\t\t\t\t-p com.nested-app=nested-app.mobileprovision" >&2
+    echo -e "\t\t\t\t\t\t\t-p com.nested-extension=nested-extension.mobileprovision" >&2
+    echo "" >&2
+    echo -e "\t-e, --entitlements entitlements\t\tSpecify entitlements file path for code signing." >&2
+    echo -e "\t-k, --keychain keychain\t\t\tSpecify keychain for code signing." >&2
+    echo -e "\t-d, --display-name displayName\t\tSpecify new display name." >&2
+    echo -e "\t\t\t\t\t\t\tWarning: will apply for all nested apps and extensions." >&2
+    echo -e "\t-n, --version-number version\t\tSpecify new version number." >&2
+    echo -e "\t\t\t\t\t\t\tWill set CFBundleShortVersionString and CFBundleVersion values in Info.plist." >&2
+    echo -e "\t\t\t\t\t\t\tWill apply for all nested apps and extensions." >&2
+    echo -e "\t-b, --bundle-id bundleId\t\tSpecify new bundle identifier (CFBundleIdentifier)." >&2
+    echo -e "\t\t\t\t\t\t\tWarning: will NOT apply for nested apps and extensions." >&2
+    echo -e "\t-v, --verbose\t\t\t\tVerbose output." >&2
+    echo -e "\t-h, --help\t\t\t\tDisplay help message." >&2
+    exit 2
+}
+
 if [ $# -lt 3 ]; then
-    echo "usage: $0 source identity -p provisioning [-e entitlements] [-d displayName] [-n version] [-b bundleId] outputIpa" >&2
-    echo "       -p option may be provided multiple times" >&2
-    exit 1
+    usage
 fi
 
 ORIGINAL_FILE="$1"
@@ -106,37 +134,49 @@ TEMP_DIR="_floatsignTemp"
 NESTED_APP_REFERENCE_KEYS=(":WKCompanionAppBundleIdentifier" ":NSExtension:NSExtensionAttributes:WKAppBundleIdentifier")
 
 # options start index
-OPTIND=3
-while getopts p:d:e:k:b:n:v opt; do
-    case $opt in
-        p)
-            RAW_PROVISIONS+=("$OPTARG")
+shift 2
+
+# Parse args
+while [ "$1" != "" ]; do
+    case $1 in
+        -p | --provisioning )
+            shift
+            RAW_PROVISIONS+=("$1")
             ;;
-        d)
-            DISPLAY_NAME="$OPTARG"
+        -e | --entitlements )
+            shift
+            ENTITLEMENTS="$1"
             ;;
-        e)
-            ENTITLEMENTS="$OPTARG"
+        -d | --display-name )
+            shift
+            DISPLAY_NAME="$1"
             ;;
-        b)
-            BUNDLE_IDENTIFIER="$OPTARG"
+        -b | --bundle-id )
+            shift
+            BUNDLE_IDENTIFIER="$1"
             ;;
-        k)
-            KEYCHAIN="$OPTARG"
+        -k | --keychain )
+            shift
+            KEYCHAIN="$1"
             ;;
-        n)
-            VERSION_NUMBER="$OPTARG"
+        -n | --version-number )
+            shift
+            VERSION_NUMBER="$1"
             ;;
-        v)
+        -v | --verbose )
             VERBOSE="--verbose"
             ;;
-        \?)
-            error "Invalid option: -$OPTARG"
+        -h | --help )
+            usage
             ;;
-        :)
-            error "Option -$OPTARG requires an argument."
+        * )
+            [[ -n "$NEW_FILE" ]] && error "Multiple output file names specified!"
+            [[ -z "$NEW_FILE" ]] && NEW_FILE="$1"
             ;;
     esac
+
+    # Next arg
+    shift
 done
 
 # Log the options
@@ -147,15 +187,17 @@ for provision in ${RAW_PROVISIONS[@]}; do
         log "Specified provisioning profile: '$provision'"
     fi
 done
+
+log "Original file: '$ORIGINAL_FILE'"
+log "Certificate: '$CERTIFICATE'"
 [[ -n "${DISPLAY_NAME}" ]] && log "Specified display name: '$DISPLAY_NAME'"
 [[ -n "${ENTITLEMENTS}" ]] && log "Specified signing entitlements: '$ENTITLEMENTS'"
 [[ -n "${BUNDLE_IDENTIFIER}" ]] && log "Specified bundle identifier: '$BUNDLE_IDENTIFIER'"
-[[ -n "${KEYCHAIN}" ]] && log "Specified Keychain to use: '$KEYCHAIN'"
-[[ -n "${VERSION_NUMBER}" ]] && log "Specified version to use: '$VERSION_NUMBER'"
+[[ -n "${KEYCHAIN}" ]] && log "Specified keychain to use: '$KEYCHAIN'"
+[[ -n "${VERSION_NUMBER}" ]] && log "Specified short version to use: '$VERSION_NUMBER'"
+[[ -n "${NEW_FILE}" ]] && log "Output file name: '$NEW_FILE'"
 
-shift $((OPTIND-1))
-
-NEW_FILE="$1"
+# Check output file name
 if [ -z "$NEW_FILE" ];
 then
     error "Output file name required"
@@ -201,8 +243,9 @@ then
 fi
 
 # Set the app name
-# The app name is the only file within the Payload directory
-APP_NAME=$(ls "$TEMP_DIR/Payload/")
+# In Payload directory may be another file except .app file, such as StoreKit folder.
+# Search the first .app file within the Payload directory
+APP_NAME=$(ls "$TEMP_DIR/Payload/"|grep ".app$"| head -1)
 
 # Make sure that PATH includes the location of the PlistBuddy helper tool as its location is not standard
 export PATH=$PATH:/usr/libexec
@@ -290,7 +333,7 @@ function resign {
     local NESTED="$2"
     local BUNDLE_IDENTIFIER="$BUNDLE_IDENTIFIER"
     local NEW_PROVISION="$NEW_PROVISION"
-    local APP_IDENTIFER_PREFIX=""
+    local APP_IDENTIFIER_PREFIX=""
     local TEAM_IDENTIFIER=""
 
     if [[ "$NESTED" == NESTED ]]; then
@@ -356,19 +399,22 @@ function resign {
     security cms -D -i "$NEW_PROVISION" > "$TEMP_DIR/profile.plist"
     checkStatus
 
-    APP_IDENTIFER_PREFIX=`PlistBuddy -c "Print :Entitlements:application-identifier" "$TEMP_DIR/profile.plist" | grep -E '^[A-Z0-9]*' -o | tr -d '\n'`
-    if [ "$APP_IDENTIFER_PREFIX" == "" ];
+    APP_IDENTIFIER_PREFIX=`PlistBuddy -c "Print :Entitlements:application-identifier" "$TEMP_DIR/profile.plist" | grep -E '^[A-Z0-9]*' -o | tr -d '\n'`
+    if [ "$APP_IDENTIFIER_PREFIX" == "" ];
     then
-        APP_IDENTIFER_PREFIX=`PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$TEMP_DIR/profile.plist"`
-        if [ "$APP_IDENTIFER_PREFIX" == "" ];
+        APP_IDENTIFIER_PREFIX=`PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$TEMP_DIR/profile.plist"`
+        if [ "$APP_IDENTIFIER_PREFIX" == "" ];
         then
             error "Failed to extract any app identifier prefix from '$NEW_PROVISION'"
         else
-            warning "WARNING: extracted an app identifier prefix '$APP_IDENTIFER_PREFIX' from '$NEW_PROVISION', but it was not found in the profile's entitlements"
+            warning "WARNING: extracted an app identifier prefix '$APP_IDENTIFIER_PREFIX' from '$NEW_PROVISION', but it was not found in the profile's entitlements"
         fi
     else
-        log "Profile app identifier prefix is '$APP_IDENTIFER_PREFIX'"
+        log "Profile app identifier prefix is '$APP_IDENTIFIER_PREFIX'"
     fi
+
+    # Set new app identifer prefix if such entry exists in plist file
+    PlistBuddy -c "Set :AppIdentifierPrefix $APP_IDENTIFIER_PREFIX." "$APP_PATH/Info.plist" 2>/dev/null
 
     TEAM_IDENTIFIER=`PlistBuddy -c "Print :Entitlements:com.apple.developer.team-identifier" "$TEMP_DIR/profile.plist" | tr -d '\n'`
     if [ "$TEAM_IDENTIFIER" == "" ];
@@ -451,16 +497,16 @@ function resign {
 
     if [ "$ENTITLEMENTS" != "" ];
     then
-        if [ -n "$APP_IDENTIFER_PREFIX" ];
+        if [ -n "$APP_IDENTIFIER_PREFIX" ];
         then
             # sanity check the 'application-identifier' is present in the provided entitlements and matches the provisioning profile value
             ENTITLEMENTS_APP_ID_PREFIX=`PlistBuddy -c "Print :application-identifier" "$ENTITLEMENTS" | grep -E '^[A-Z0-9]*' -o | tr -d '\n'`
             if [ "$ENTITLEMENTS_APP_ID_PREFIX" == "" ];
             then
                 error "Provided entitlements file is missing a value for the required 'application-identifier' key"
-            elif [ "$ENTITLEMENTS_APP_ID_PREFIX" != "$APP_IDENTIFER_PREFIX" ];
+            elif [ "$ENTITLEMENTS_APP_ID_PREFIX" != "$APP_IDENTIFIER_PREFIX" ];
             then
-                error "Provided entitlements file's app identifier prefix value '$ENTITLEMENTS_APP_ID_PREFIX' does not match the provided provisioning profile's value '$APP_IDENTIFER_PREFIX'"
+                error "Provided entitlements file's app identifier prefix value '$ENTITLEMENTS_APP_ID_PREFIX' does not match the provided provisioning profile's value '$APP_IDENTIFIER_PREFIX'"
             fi
         fi
 
@@ -480,7 +526,7 @@ function resign {
         log "Resigning application using certificate: '$CERTIFICATE'"
         log "and entitlements: $ENTITLEMENTS"
         cp -- "$ENTITLEMENTS" "$APP_PATH/archived-expanded-entitlements.xcent"
-        /usr/bin/codesign ${VERBOSE} -f -s "$CERTIFICATE" --entitlements="$ENTITLEMENTS" "$APP_PATH"
+        /usr/bin/codesign ${VERBOSE} -f -s "$CERTIFICATE" --entitlements "$ENTITLEMENTS" "$APP_PATH"
         checkStatus
     else
         log "Extracting entitlements from provisioning profile"
@@ -489,7 +535,7 @@ function resign {
         log "Resigning application using certificate: '$CERTIFICATE'"
         log "and entitlements from provisioning profile: $NEW_PROVISION"
         cp -- "$TEMP_DIR/newEntitlements" "$APP_PATH/archived-expanded-entitlements.xcent"
-        /usr/bin/codesign ${VERBOSE} -f -s "$CERTIFICATE" --entitlements="$TEMP_DIR/newEntitlements" "$APP_PATH"
+        /usr/bin/codesign ${VERBOSE} -f -s "$CERTIFICATE" --entitlements "$TEMP_DIR/newEntitlements" "$APP_PATH"
         checkStatus
     fi
 

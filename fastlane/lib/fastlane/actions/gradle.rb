@@ -30,7 +30,7 @@ module Fastlane
                       end
 
         # Ensure we ended up with a valid path to gradle
-        raise "Couldn't find gradlew at path '#{File.expand_path(gradle_path)}'".red unless File.exist?(gradle_path)
+        UI.user_error!("Couldn't find gradlew at path '#{File.expand_path(gradle_path)}'") unless File.exist?(gradle_path)
 
         # Construct our flags
         flags = []
@@ -65,7 +65,7 @@ module Fastlane
         Actions.lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH] = File.expand_path(last_apk_path) if last_apk_path
 
         # Give a helpful message in case there were no new apk's. Remember we're only running this code when assembling, in which case we certainly expect there to be an apk
-        Helper.log.info 'Couldn\'t find any new signed apk files...'.red if new_apks.empty?
+        UI.message('Couldn\'t find any new signed apk files...') if new_apks.empty?
 
         return result
       end

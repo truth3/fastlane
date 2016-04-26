@@ -9,7 +9,7 @@ module Fastlane
         require 'shenzhen'
         require 'shenzhen/plugins/testfairy'
 
-        Helper.log.info 'Starting with ipa upload to TestFairy...'.green
+        UI.success('Starting with ipa upload to TestFairy...')
 
         client = Shenzhen::Plugins::TestFairy::Client.new(
           params[:api_key]
@@ -19,10 +19,10 @@ module Fastlane
 
         response = client.upload_build(params[:ipa], params.values)
         if parse_response(response)
-          Helper.log.info "Build URL: #{Actions.lane_context[SharedValues::TESTFAIRY_BUILD_URL]}".green
-          Helper.log.info "Build successfully uploaded to TestFairy.".green
+          UI.success("Build URL: #{Actions.lane_context[SharedValues::TESTFAIRY_BUILD_URL]}")
+          UI.success("Build successfully uploaded to TestFairy.")
         else
-          raise 'Error when trying to upload ipa to TestFairy'.red
+          UI.user_error!("Error when trying to upload ipa to TestFairy")
         end
       end
 
@@ -38,7 +38,7 @@ module Fastlane
 
           return true
         else
-          Helper.log.fatal "Error uploading to TestFairy: #{response.body}".red
+          UI.error("Error uploading to TestFairy: #{response.body}")
 
           return false
         end
@@ -55,14 +55,14 @@ module Fastlane
                                        env_name: "FL_TESTFAIRY_API_KEY", # The name of the environment variable
                                        description: "API Key for TestFairy", # a short description of this parameter
                                        verify_block: proc do |value|
-                                         raise "No API key for TestFairy given, pass using `api_key: 'key'`".red unless value.to_s.length > 0
+                                         UI.user_error!("No API key for TestFairy given, pass using `api_key: 'key'`") unless value.to_s.length > 0
                                        end),
           FastlaneCore::ConfigItem.new(key: :ipa,
                                        env_name: 'TESTFAIRY_IPA_PATH',
                                        description: 'Path to your IPA file. Optional if you use the `gym` or `xcodebuild` action',
                                        default_value: Actions.lane_context[SharedValues::IPA_OUTPUT_PATH],
                                        verify_block: proc do |value|
-                                         raise "Couldn't find ipa file at path '#{value}'".red unless File.exist?(value)
+                                         UI.user_error!("Couldn't find ipa file at path '#{value}'") unless File.exist?(value)
                                        end),
           FastlaneCore::ConfigItem.new(key: :comment,
                                        env_name: "FL_TESTFAIRY_COMMENT",

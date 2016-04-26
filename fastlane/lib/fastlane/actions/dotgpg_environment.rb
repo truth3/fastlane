@@ -8,7 +8,7 @@ module Fastlane
         Actions.verify_gem!('dotgpg')
         require 'dotgpg/environment'
 
-        Helper.log.info "Reading secrets from #{options[:dotgpg_file]}"
+        UI.message("Reading secrets from #{options[:dotgpg_file]}")
         Dotgpg::Environment.new(options[:dotgpg_file]).apply
       end
 
@@ -28,7 +28,7 @@ module Fastlane
                                        default_value: Dir["dotgpg/*.gpg"].last,
                                        optional: false,
                                        verify_block: proc do |value|
-                                         raise "Dotgpg file '#{File.expand_path(value)}' not found".red unless File.exist?(value)
+                                         UI.user_error!("Dotgpg file '#{File.expand_path(value)}' not found") unless File.exist?(value)
                                        end)
         ]
       end

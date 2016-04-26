@@ -39,8 +39,24 @@ def format_failure(failure, gem_name, count)
 end
 
 def bundle_install
-  cache_path = File.expand_path("/tmp/vendor/bundle")
-  sh "bundle check --path='#{cache_path}' || bundle install --path='#{cache_path}' --jobs=4 --retry=3"
+  if ENV['CI']
+    cache_path = File.expand_path("~/.fastlane_bundle")
+    path = " --path=#{cache_path}"
+  end
+
+  sh "bundle check#{path} || bundle install#{path} --jobs=4 --retry=3"
+end
+
+task :bundle_install_all do
+  puts "Fetching dependencies in the root"
+  bundle_install
+
+  for_each_gem do |repo|
+    Dir.chdir(repo) do
+      puts "Fetching dependencies for #{repo}"
+      bundle_install
+    end
+  end
 end
 
 def get_line_from_file(line_number, file)
@@ -62,7 +78,6 @@ task :test_all do
   repos_with_exceptions = []
   rspec_log_file = "rspec_logs.json"
 
-  bundle_install
   for_each_gem do |repo|
     box "Testing #{repo}"
     Dir.chdir(repo) do
@@ -71,14 +86,27 @@ task :test_all do
         # From https://github.com/bundler/bundler/issues/1424#issuecomment-2123080
         # Since we nest bundle exec in bundle exec
         Bundler.with_clean_env do
-          bundle_install
-          sh "bundle exec rspec --format documentation --format j --out #{rspec_log_file}"
+          rspec_command_parts = [
+            "bundle exec rspec",
+            "--format documentation",
+            "--format j --out #{rspec_log_file}"
+          ]
+          if ENV['CIRCLECI']
+            output_file = File.join(ENV['CIRCLE_TEST_REPORTS'], 'rspec', "#{repo}-junit.xml")
+            rspec_command_parts << "--format RspecJunitFormatter --out #{output_file}"
+          end
+
+          sh rspec_command_parts.join(' ')
           sh "bundle exec rubocop"
         end
       rescue => ex
         puts "[[FAILURE]] with repo '#{repo}' due to\n\n#{ex}\n\n"
         exceptions << "#{repo}: #{ex}"
         repos_with_exceptions << repo
+      ensure
+        if ENV["CIRCLECI"] && ENV["CIRCLE_ARTIFACTS"] && File.exist?(rspec_log_file)
+          FileUtils.cp(rspec_log_file, File.join(ENV["CIRCLE_ARTIFACTS"], "rspec_logs_#{repo}.json"))
+        end
       end
     end
   end
@@ -121,5 +149,6 @@ task :test_all do
   else
     box "Exceptions 💣"
     puts "\n" + exceptions.map(&:red).join("\n")
+    raise "All tests did not complete successfully. Search for '[[FAILURE]]' in the build logs.".red
   end
 end

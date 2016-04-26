@@ -17,8 +17,8 @@ module Fastlane
 
           return value
         rescue => ex
-          Helper.log.error ex
-          Helper.log.error "Unable to find plist file at '#{path}'".red
+          UI.error(ex)
+          UI.error("Unable to find plist file at '#{path}'")
         end
       end
 
@@ -37,7 +37,7 @@ module Fastlane
                                        description: "Path to plist file you want to read",
                                        optional: false,
                                        verify_block: proc do |value|
-                                         raise "Couldn't find plist file at path '#{value}'".red unless File.exist?(value)
+                                         UI.user_error!("Couldn't find plist file at path '#{value}'") unless File.exist?(value)
                                        end)
         ]
       end

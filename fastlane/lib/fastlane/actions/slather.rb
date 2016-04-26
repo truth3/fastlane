@@ -24,7 +24,8 @@ module Fastlane
         output_directory: "--output-directory",
         binary_basename: "--binary-basename",
         binary_file: "--binary-file",
-        ignore: "--ignore"
+        ignore: "--ignore",
+        workspace: "--workspace"
       }.freeze
 
       def self.run(params)
@@ -74,7 +75,7 @@ module Fastlane
       def self.details
         return <<-eos
 Slather works with multiple code coverage formats including Xcode7 code coverage.
-Slather is available at https://github.com/venmo/slather
+Slather is available at https://github.com/SlatherOrg/slather
         eos
       end
 
@@ -89,8 +90,13 @@ Slather is available at https://github.com/venmo/slather
                                        env_name: "FL_SLATHER_PROJ", # The name of the environment variable
                                        description: "The project file that slather looks at", # a short description of this parameter
                                        verify_block: proc do |value|
-                                         raise "No project file specified, pass using `proj: 'Project.xcodeproj'`".red unless value and !value.empty?
+                                         UI.user_error!("No project file specified, pass using `proj: 'Project.xcodeproj'`") unless value and !value.empty?
                                        end),
+          FastlaneCore::ConfigItem.new(key: :workspace,
+                                       env_name: "FL_SLATHER_WORKSPACE",
+                                       description: "The workspace that slather looks at",
+                                       optional: true
+                                      ),
           FastlaneCore::ConfigItem.new(key: :scheme,
                                        env_name: "FL_SLATHER_SCHEME", # The name of the environment variable
                                        description: "Scheme to use when calling slather",
@@ -148,7 +154,7 @@ Slather is available at https://github.com/venmo/slather
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :show,
                                        env_name: "FL_SLATHER_SHOW_ENABLED",
-                                       description: "Tell slather that it should oupen static html pages automatically",
+                                       description: "Tell slather that it should open static html pages automatically",
                                        is_string: false,
                                        default_value: false),
           FastlaneCore::ConfigItem.new(key: :source_directory,

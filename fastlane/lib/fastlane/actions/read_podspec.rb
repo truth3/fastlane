@@ -13,7 +13,7 @@ module Fastlane
         require 'cocoapods-core'
         spec = Pod::Spec.from_file(path).to_hash
 
-        Helper.log.info "Reading podspec from file #{path}".green
+        UI.success("Reading podspec from file #{path}")
 
         Actions.lane_context[SharedValues::READ_PODSPEC_JSON] = spec
         return spec
@@ -42,7 +42,7 @@ module Fastlane
                                        description: "Path to the podspec to be read",
                                        default_value: Dir['*.podspec*'].first,
                                        verify_block: proc do |value|
-                                         raise "File #{value} not found".red unless File.exist?(value)
+                                         UI.user_error!("File #{value} not found") unless File.exist?(value)
                                        end)
         ]
       end

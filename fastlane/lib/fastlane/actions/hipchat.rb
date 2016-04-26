@@ -31,7 +31,7 @@ module Fastlane
         if api_version.to_i == 1
           ########## running on V1 ##########
           if user?(channel)
-            raise 'HipChat private message not working with API V1 please use API V2 instead'.red
+            UI.user_error!("HipChat private message not working with API V1 please use API V2 instead")
           else
             uri = URI.parse("https://#{api_host}/v1/rooms/message")
             response = Net::HTTP.post_form(uri, { 'from' => from,
@@ -56,7 +56,6 @@ module Fastlane
             http.use_ssl = true
 
             response = http.post(uri.path, params.to_json, json_headers)
-            check_response_code(response, channel)
           else
             uri = URI.parse("https://#{api_host}/v2/room/#{channel}/notification")
             response = Net::HTTP.post_form(uri, { 'from' => from,
@@ -65,9 +64,8 @@ module Fastlane
                                                   'message_format' => message_format,
                                                   'message' => message,
                                                   'notify' => options[:notify_room] ? 'true' : 'false' })
-
-            check_response_code(response, channel)
           end
+          check_response_code(response, channel)
         end
       end
 
@@ -80,11 +78,11 @@ module Fastlane
         when 200, 204
           true
         when 404
-          raise "Channel `#{channel}` not found".red
+          UI.user_error!("Channel `#{channel}` not found")
         when 401
-          raise "Access denied for channel `#{channel}`".red
+          UI.user_error!("Access denied for channel `#{channel}`")
         else
-          raise "Unexpected #{response.code} for `#{channel}` with response: #{response.body}".red
+          UI.user_error!("Unexpected #{response.code} for `#{channel}` with response: #{response.body}")
         end
       end
 
@@ -106,8 +104,8 @@ module Fastlane
                                        description: "Hipchat API Token",
                                        verify_block: proc do |value|
                                          unless value.to_s.length > 0
-                                           Helper.log.fatal "Please add 'ENV[\"HIPCHAT_API_TOKEN\"] = \"your token\"' to your Fastfile's `before_all` section.".red
-                                           raise 'No HIPCHAT_API_TOKEN given.'.red
+                                           UI.error("Please add 'ENV[\"HIPCHAT_API_TOKEN\"] = \"your token\"' to your Fastfile's `before_all` section.")
+                                           UI.user_error!("No HIPCHAT_API_TOKEN given.")
                                          end
                                        end),
           FastlaneCore::ConfigItem.new(key: :custom_color,
@@ -126,8 +124,8 @@ module Fastlane
                                        description: "Version of the Hipchat API. Must be 1 or 2",
                                        verify_block: proc do |value|
                                          if value.nil? || ![1, 2].include?(value.to_i)
-                                           Helper.log.fatal "Please add 'ENV[\"HIPCHAT_API_VERSION\"] = \"1 or 2\"' to your Fastfile's `before_all` section.".red
-                                           raise 'No HIPCHAT_API_VERSION given.'.red
+                                           UI.error("Please add 'ENV[\"HIPCHAT_API_VERSION\"] = \"1 or 2\"' to your Fastfile's `before_all` section.")
+                                           UI.user_error!("No HIPCHAT_API_VERSION given.")
                                          end
                                        end),
           FastlaneCore::ConfigItem.new(key: :notify_room,
@@ -148,8 +146,8 @@ module Fastlane
                                        optional: true,
                                        verify_block: proc do |value|
                                          unless ["html", "text"].include?(value.to_s)
-                                           Helper.log.fatal "Please specify the message format as either 'html' or 'text'.".red
-                                           raise 'Unrecognized message_format.'.red
+                                           UI.error("Please specify the message format as either 'html' or 'text'.")
+                                           UI.user_error!("Unrecognized message_format.")
                                          end
                                        end),
           FastlaneCore::ConfigItem.new(key: :include_html_header,

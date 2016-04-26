@@ -15,12 +15,12 @@ describe Gym do
 
       result = Gym::PackageCommandGeneratorXcode7.generate
       expect(result).to eq([
-        "/usr/bin/xcrun #{Gym::XcodebuildFixes.wrap_xcodebuild} -exportArchive",
-        "-exportOptionsPlist '#{Gym::PackageCommandGeneratorXcode7.config_path}'",
-        "-archivePath '#{Gym::BuildCommandGenerator.archive_path}'",
-        "-exportPath '#{Gym::PackageCommandGeneratorXcode7.temporary_output_path}'",
-        ""
-      ])
+                             "/usr/bin/xcrun #{Gym::XcodebuildFixes.wrap_xcodebuild} -exportArchive",
+                             "-exportOptionsPlist '#{Gym::PackageCommandGeneratorXcode7.config_path}'",
+                             "-archivePath '#{Gym::BuildCommandGenerator.archive_path}'",
+                             "-exportPath '#{Gym::PackageCommandGeneratorXcode7.temporary_output_path}'",
+                             ""
+                           ])
     end
 
     it "generates a valid plist file we need" do
@@ -143,11 +143,11 @@ describe Gym do
       Gym.config = FastlaneCore::Configuration.create(Gym::Options.available_options, options)
 
       result = Gym::PackageCommandGeneratorXcode7.generate
-      expect(Gym::PackageCommandGeneratorXcode7.temporary_output_path).to match(%r{#{Dir.tmpdir}/gym.+\.gym_output})
-      expect(Gym::PackageCommandGeneratorXcode7.manifest_path).to match(%r{#{Dir.tmpdir}/gym.+\.gym_output/manifest.plist})
-      expect(Gym::PackageCommandGeneratorXcode7.app_thinning_path).to match(%r{#{Dir.tmpdir}/gym.+\.gym_output/app-thinning.plist})
-      expect(Gym::PackageCommandGeneratorXcode7.app_thinning_size_report_path).to match(%r{#{Dir.tmpdir}/gym.+\.gym_output/App Thinning Size Report.txt})
-      expect(Gym::PackageCommandGeneratorXcode7.apps_path).to match(%r{#{Dir.tmpdir}/gym.+\.gym_output/Apps})
+      expect(Gym::PackageCommandGeneratorXcode7.temporary_output_path).to match(%r{#{Dir.tmpdir}/gym_output.+})
+      expect(Gym::PackageCommandGeneratorXcode7.manifest_path).to match(%r{#{Dir.tmpdir}/gym_output.+/manifest.plist})
+      expect(Gym::PackageCommandGeneratorXcode7.app_thinning_path).to match(%r{#{Dir.tmpdir}/gym_output.+/app-thinning.plist})
+      expect(Gym::PackageCommandGeneratorXcode7.app_thinning_size_report_path).to match(%r{#{Dir.tmpdir}/gym_output.+/App Thinning Size Report.txt})
+      expect(Gym::PackageCommandGeneratorXcode7.apps_path).to match(%r{#{Dir.tmpdir}/gym_output.+/Apps})
     end
   end
 end

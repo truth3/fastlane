@@ -22,22 +22,22 @@ module Fastlane
           if app.build_trains.keys.last
             version_number = app.build_trains.keys.last
           else
-            Helper.log.info "You have to specify a new version number: "
+            UI.message("You have to specify a new version number: ")
             version_number = STDIN.gets.strip
           end
         end
 
-        Helper.log.info "Fetching the latest build number for version #{version_number}"
+        UI.message("Fetching the latest build number for version #{version_number}")
 
         train = app.build_trains[version_number]
         begin
           build_number = train.builds.map(&:build_version).map(&:to_i).sort.last
         rescue
-          raise "could not find a build on iTC - and 'initial_build_number' option is not set" unless params[:initial_build_number]
+          UI.user_error!("could not find a build on iTC - and 'initial_build_number' option is not set") unless params[:initial_build_number]
           build_number = params[:initial_build_number]
         end
 
-        Helper.log.info "Latest upload is build number: #{build_number}"
+        UI.message("Latest upload is build number: #{build_number}")
         Actions.lane_context[SharedValues::LATEST_TESTFLIGHT_BUILD_NUMBER] = build_number
       end
 

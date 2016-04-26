@@ -53,7 +53,7 @@ module Fastlane
 
       def self.run(params)
         unless Helper.test?
-          raise "gcovr not installed".red if `which gcovr`.length == 0
+          UI.user_error!("gcovr not installed") if `which gcovr`.length == 0
         end
 
         # The args we will build with
@@ -78,8 +78,8 @@ module Fastlane
         gcovr_args = gcovr_args.join(" ")
 
         command = "gcovr #{gcovr_args}"
-        Helper.log.info "Generating code coverage.".green
-        Helper.log.debug command
+        UI.success("Generating code coverage.")
+        UI.verbose(command)
         Actions.sh command
       end
 

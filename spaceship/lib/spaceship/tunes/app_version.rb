@@ -78,6 +78,11 @@ module Spaceship
       # @return (String) App Review Information Email Address
       attr_accessor :review_email
 
+      # @return (Boolean) The checkbox that indiciates if a demo account
+      #   is needed. Is set automatically depending on if a user and pass
+      #   are set
+      attr_reader :review_user_needed
+
       # @return (String) App Review Information Demo Account User Name
       attr_accessor :review_demo_user
 
@@ -141,6 +146,7 @@ module Spaceship
         'appReviewInfo.phoneNumber.value' => :review_phone_number,
         'appReviewInfo.emailAddress.value' => :review_email,
         'appReviewInfo.reviewNotes.value' => :review_notes,
+        'appReviewInfo.accountRequired.value' => :review_user_needed,
         'appReviewInfo.userName.value' => :review_demo_user,
         'appReviewInfo.password.value' => :review_demo_password
       })
@@ -168,8 +174,8 @@ module Spaceship
           attrs = client.app_version(app_id, is_live)
           return nil unless attrs
 
-          attrs.merge!(application: application)
-          attrs.merge!(is_live: is_live)
+          attrs[:application] = application
+          attrs[:is_live] = is_live
 
           return self.factory(attrs)
         end
@@ -178,6 +184,10 @@ module Spaceship
       # @return (Bool) Is that version currently available in the App Store?
       def is_live?
         is_live
+      end
+
+      def review_user_needed
+        (self.review_demo_user.to_s + self.review_demo_password.to_s).length > 0
       end
 
       # Call this method to make sure the given languages are available for this app
@@ -211,6 +221,7 @@ module Spaceship
         builds = []
         res.each do |attrs|
           next unless attrs["type"] == "BUILD" # I don't know if it can be something else.
+          attrs[:apple_id] = self.application.apple_id
           builds << Tunes::Build.factory(attrs)
         end
         return builds
@@ -236,7 +247,7 @@ module Spaceship
       # })
       #
       # Available Values
-      # https://github.com/KrauseFx/deliver/blob/master/Reference.md
+      # https://github.com/fastlane/fastlane/blob/master/deliver/Reference.md
       def update_rating(hash)
         raise "Must be a hash" unless hash.kind_of?(Hash)
 
@@ -429,7 +440,7 @@ module Spaceship
 
           trailer.merge!({
             "pictureAssetToken" => video_preview_data["token"],
-            "previewFrameTimeCode" => "#{ts}",
+            "previewFrameTimeCode" => ts.to_s,
             "isPortrait" => Utilities.portrait?(video_preview_path)
           })
         else # removing trailer
@@ -454,6 +465,18 @@ module Spaceship
 
       def release!
         client.release!(self.application.apple_id, self.version_id)
+      end
+
+      #####################################################
+      # @!group Promo codes
+      #####################################################
+      def generate_promocodes!(quantity)
+        data = client.generate_app_version_promocodes!(
+          app_id: self.application.apple_id,
+          version_id: self.version_id,
+          quantity: quantity
+        )
+        Tunes::AppVersionGeneratedPromocodes.factory(data)
       end
 
       # These methods takes care of properly parsing values that

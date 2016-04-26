@@ -1,13 +1,24 @@
 # Contributing to `fastlane`
 
-To clone the [fastlane](https://fastlane.tools) repos, use the [countdown](https://github.com/fastlane/countdown) repo. It will help you set up the development environment within minutes.
+## Getting started
 
-1. Create an issue to discuss about your idea.
-2. Fork it (https://github.com/fastlane/fastlane/tree/master/fastlane).
-3. Create your feature branch (`git checkout -b my-new-feature`).
-4. Commit your changes (`git commit -am 'Add some feature'`).
-5. Push to the branch (`git push origin my-new-feature`).
-6. Create a new Pull Request.
+Make sure you have `bundler` installed using `gem install bundler`
+
+- Open the GitHub page of the `fastlane`repository  (e.g. [https://github.com/fastlane/fastlane](https://github.com/fastlane/fastlane))
+- Create an issue to discuss your idea/feature/enhancement.
+- Click on `Fork` on the top right
+- Then clone your new repo locally `git clone https://github.com/[my_user]/fastlane.git`
+- On your terminal, navigate to the project and run `git remote add upstream https://github.com/fastlane/fastlane` (or use the `git` URL if you use private key auth)
+- Create your feature branch (`git checkout -b my-new-feature`).
+- Commit your changes (`git commit -am 'Add some feature'`).
+- Push to the branch (`git push origin my-new-feature`).
+- Create a new Pull Request.
+
+Before working on something, make sure to have pulled the latest changes. To pull the changes run
+
+```
+git pull master
+```
 
 ## New Issues
 
@@ -27,7 +38,7 @@ When submitting a new issue, please provide the following information:
 
 ## Helping to Resolve Existing Issues
 
-If you're motivated to help out at a level beyond reporting issues, we really appreciate it! :+1: A good place to start is by reviewing the list of [open issues](https://github.com/fastlane/fastlane/issues) or [open PRs](https://github.com/fastlane/fastlane/tree/master/fastlane) for things that need attention. When you find one that you'd like to help with, the [countdown](https://github.com/fastlane/countdown) repo is the best way to get set up with the source code for all of the fastlane projects. With that, working on the following things are super valuable:
+If you're motivated to help out at a level beyond reporting issues, we really appreciate it! :+1: We use the [`help wanted`](https://github.com/fastlane/fastlane/labels/help%20wanted) label to mark things that we think it would be great to have community help in resolving, so that's a great place to start! In addition, working on the following things are super valuable:
 
 ### Verifying Bug Reports
 
@@ -61,11 +72,11 @@ If you're happy with what you see, leave a comment on the GitHub issue stating y
 
 ## Pull Requests (PRs)
 
-Pull requests are always welcome :simple_smile:
+Pull requests are always welcome :smile:
 
-If you're working on fixing a particular issue, referring to it in the description of your PR is really helpful for establishing the context needed for review.
+PRs should reference an open GitHub issue (preferably those marked with the [help wanted](https://github.com/fastlane/fastlane/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) label). Referring to the issue in the description of your PR is required and is really helpful for establishing the context needed for review.
 
-If your PR is contributing new functionality, did you create an issue to discuss it with the community first? Great! :raised_hands: Reference that issue in your PR.
+If you're considering contibuting new functionality, please open a new issue explaining the functionality desired first so that we can discuss as a community. We'll add the [help wanted](https://github.com/fastlane/fastlane/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) label if we believe this to be a meaningful contribution that will benefit other fastlane users and you go ahead with the pull request. :raised_hands:
 
 **Pro tip:** GitHub will automatically turn references to issue numbers in the form `#1234` into a link to the issue/PR with that number within the same repo.
 
@@ -73,6 +84,16 @@ If your PR is contributing new functionality, did you create an issue to discuss
     - `fastlane` has a lot of moving parts and receives contributions from many developers. The best way to ensure that your contributions keep working is to ensure that there will be failing tests if something accidentally gets broken.
     - You can run the tests by executing `bundle install` and then `bundle exec rspec`.
 - Your code editor should indent using spaces with a tab size of 2 spaces.
+
+To submit the changes to the fastlane repo, you have to do the following:
+
+- Squash your commits into one. For example, to squash three commits into one, do the following: `$ git rebase -i HEAD~3`. In the text editor that comes up, replace the words "pick" with "squash" next to the commits you want to squash. Save and close the editor. For more information, take a look at [7.6 Git Tools - Rewriting History](http://git-scm.com/book/en/v2/Git-Tools-Rewriting-History)
+- Run `git push upstream master`. If you pushed before squashing, go back and do the previous step, and then run `git push upstream master --force`
+- Open `https://github.com/fastlane/fastlane` in your browser and click the green "Create Pull Request" button
+
+## What Do All These Labels Mean?
+
+Great question! Check out the [GitHub Labels](GitHubLabels.md) document for a quick summary of the labels we use and what they mean.
 
 ## Why Did My Issue/PR Get Closed?
 
@@ -88,6 +109,81 @@ One of the best ways we can keep fastlane an approachable, stable, and dependabl
 
 Writing a custom action is an easy way to extend the capabilities of fastlane. Actions that make good candidates for inclusion in the fastlane codebase are **flexible** and apply to **many projects, teams, and development setups**. Before working to contribute your custom action to fastlane, consider whether it is likely to solve a problem that many developers have. If not, it can still provide value for your fastlane environment! Check out the documentation for creating [local action extensions](https://github.com/fastlane/fastlane/blob/master/fastlane/docs/README.md#extensions).
 
+## Developing
+
+When working on something, directly edit the Ruby files in the project folders. Make sure to switch your text editor to use spaces and indentations should be 2 spaces.
+
+To run the modified version of the tool, run the following in the project directory
+
+```
+.[tool_name]/bin/[tool_name]
+```
+
+or install the local copy (might require `sudo`)
+
+```
+bundle install && rake install
+```
+
+## Debugging
+
+I personally use a plain Sublime Text with a terminal. Debugging is pretty easy, just insert the following code to where you want to jump in:
+
+```ruby
+require 'pry'
+binding.pry
+```
+
+You then jump into an interactive debugger that allows you to print out variables, call methods and much more. Continue running the original script using `control` + `d`
+
+## Running tests
+
+In the directory of one project, run the tests using
+
+`rake test`
+
+This will do a few things:
+
+- Runs the tests (you can run them via `rspec` too)
+- Makes sure no debug code (like `pry`) is still there
+- The `--help` command works as expected
+
+The tests are executed using `fastlane` :rocket:
+
+To run only a subset of the tests, you can add the `now: true` keyword to the test
+
+```ruby
+it "raises an exception if it rains", now: true do
+  ...
+end
+```
+
+and then run these tests only using
+
+```sh
+rspec -t now
+```
+
+## rubocop validation
+
+The `fastlane` repos use [rubocop](https://github.com/bbatsov/rubocop) to validate the code style.
+
+The style validation is automatically done when running `rake test`.
+
+To automatically fix common code style issues (e.g. wrong spacing), run `rubocop -a`
+
+## Need help?
+Please submit an [issue](https://github.com/fastlane/fastlane/issues) on GitHub and provide information about your setup
+
+## Code of Conduct
+Help us keep `fastlane` open and inclusive. Please read and follow our [Code of Conduct](https://github.com/fastlane/fastlane/blob/master/CODE_OF_CONDUCT.md).
+
+
 # Above All, Thanks for Your Contributions
 
 Thank you for reading to the end, and for taking the time to contribute to the project! If you include the 🔑 emoji at the top of the body of your issue or pull request, we'll know that you've given this your full attention and are doing your best to help!
+
+## License
+This project is licensed under the terms of the MIT license. See the LICENSE file.
+
+> This project and all fastlane tools are in no way affiliated with Apple Inc. This project is open source under the MIT license, which means you have full access to the source code and can modify it to fit your own needs. All fastlane tools run on your own computer or server, so your credentials or other sensitive information will never leave your own computer. You are responsible for how you use fastlane tools.

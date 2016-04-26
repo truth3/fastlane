@@ -56,13 +56,13 @@ describe Fastlane do
             end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-notifications YES",
-              "-debug NO"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-notifications YES",
+                                    "-debug NO"
+                                  ])
           end
 
           it "works automatically stores the notes in a file if given" do
@@ -99,13 +99,13 @@ describe Fastlane do
             end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-notifications YES",
-              "-debug NO"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-notifications YES",
+                                    "-debug NO"
+                                  ])
           end
 
           it "works when using TrueClass variable in place of notifications parameter" do
@@ -121,13 +121,13 @@ describe Fastlane do
               end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-notifications YES",
-              "-debug NO"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-notifications YES",
+                                    "-debug NO"
+                                  ])
           end
 
           it "works when using 'false' String variable in place of notifications parameter" do
@@ -143,13 +143,13 @@ describe Fastlane do
             end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-notifications NO",
-              "-debug NO"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-notifications NO",
+                                    "-debug NO"
+                                  ])
           end
 
           it "works when using TrueClass variable in place of debug parameter" do
@@ -165,13 +165,13 @@ describe Fastlane do
               end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-notifications YES",
-              "-debug YES"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-notifications YES",
+                                    "-debug YES"
+                                  ])
           end
 
           it "works when using 'false' String variable in place of debug parameter" do
@@ -188,13 +188,13 @@ describe Fastlane do
             end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-notifications NO",
-              "-debug NO"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-notifications NO",
+                                    "-debug NO"
+                                  ])
           end
 
           it "works when filling out all the parameters" do
@@ -213,16 +213,16 @@ describe Fastlane do
               end").runner.execute(:test)
 
             expect(command).to eq([
-              @crashlytics_bundle,
-              "wadus",
-              "secret",
-              "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-emails 'email1,email2'",
-              "-notesPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
-              "-groupAliases 'groups,123'",
-              "-notifications NO",
-              "-debug NO"
-            ])
+                                    @crashlytics_bundle,
+                                    "wadus",
+                                    "secret",
+                                    "-ipaPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-emails 'email1,email2'",
+                                    "-notesPath './fastlane/spec/fixtures/fastfiles/Fastfile1'",
+                                    "-groupAliases 'groups,123'",
+                                    "-notifications NO",
+                                    "-debug NO"
+                                  ])
           end
         end
 
@@ -262,7 +262,7 @@ describe Fastlane do
                   ipa_path: './fastlane/spec/fixtures/fastfiles/Fastfile1'
                 })
               end").runner.execute(:test)
-            end.to raise_error("No API token for Crashlytics given, pass using `api_token: 'token'`".red)
+            end.to raise_error("No API token for Crashlytics given, pass using `api_token: 'token'`")
           end
 
           it "raises an error if no build secret was given" do
@@ -274,7 +274,7 @@ describe Fastlane do
                   ipa_path: './fastlane/spec/fixtures/fastfiles/Fastfile1'
                 })
               end").runner.execute(:test)
-            end.to raise_error("No build secret for Crashlytics given, pass using `build_secret: 'secret'`".red)
+            end.to raise_error("No build secret for Crashlytics given, pass using `build_secret: 'secret'`")
           end
 
           it "raises an error if no ipa path was given" do
@@ -286,7 +286,7 @@ describe Fastlane do
                   build_secret: 'wadus'
                 })
               end").runner.execute(:test)
-            end.to raise_error("You have to either pass an ipa or an apk file to the Crashlytics action".red)
+            end.to raise_error("You have to either pass an ipa or an apk file to the Crashlytics action")
           end
 
           it "raises an error if the given ipa path was not found" do
@@ -299,7 +299,7 @@ describe Fastlane do
                   ipa_path: './fastlane/wadus'
                 })
               end").runner.execute(:test)
-            end.to raise_error("Couldn't find ipa file at path './fastlane/wadus'".red)
+            end.to raise_error("Couldn't find ipa file at path './fastlane/wadus'")
           end
         end
       end

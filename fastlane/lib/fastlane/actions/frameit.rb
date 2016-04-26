@@ -11,7 +11,7 @@ module Fastlane
           color = Frameit::Color::BLACK
           color = Frameit::Color::SILVER if config[:white] || config[:silver]
 
-          Helper.log.info "Framing screenshots at path #{config[:path]}"
+          UI.message("Framing screenshots at path #{config[:path]}")
 
           Dir.chdir(config[:path]) do
             ENV["FRAMEIT_FORCE_DEVICE_TYPE"] = config[:force_device_type] if config[:force_device_type]
@@ -49,7 +49,7 @@ module Fastlane
                                        verify_block: proc do |value|
                                          available = ['iPhone_6_Plus', 'iPhone_5s', 'iPhone_4', 'iPad_mini', 'Mac']
                                          unless available.include? value
-                                           raise "Invalid device type '#{value}'. Available values: #{available}".red
+                                           UI.user_error!("Invalid device type '#{value}'. Available values: #{available}")
                                          end
                                        end)
         ]

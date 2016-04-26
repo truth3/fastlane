@@ -34,7 +34,7 @@ module Spaceship
       upload_file(app_version, upload_file, '/upload/purple-video', content_provider_id, sso_token_for_video)
     end
 
-    def upload_video_preview(app_version, upload_file, content_provider_id, sso_token_for_image)
+    def upload_trailer_preview(app_version, upload_file, content_provider_id, sso_token_for_image)
       upload_file(app_version, upload_file, '/upload/app-screenshot-image', content_provider_id, sso_token_for_image)
     end
 
@@ -62,7 +62,7 @@ module Spaceship
         req.headers['X-Apple-Upload-ContentProviderId'] = content_provider_id
         req.headers['X-Original-Filename'] = upload_file.file_name
         req.headers['X-Apple-Upload-Validation-RuleSets'] = du_validation_rule_set if du_validation_rule_set
-        req.headers['Content-Length'] = "#{upload_file.file_size}"
+        req.headers['Content-Length'] = upload_file.file_size.to_s
         req.headers['Connection'] = "keep-alive"
       end
 

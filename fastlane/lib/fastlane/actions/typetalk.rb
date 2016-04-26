@@ -11,7 +11,7 @@ module Fastlane
         }.merge(params || {})
 
         [:message, :topic_id, :typetalk_token].each do |key|
-          raise "No #{key} given.".red unless options[key]
+          UI.user_error!("No #{key} given.") unless options[key]
         end
 
         emoticon = (options[:success] ? ':smile:' : ':rage:')
@@ -28,7 +28,7 @@ module Fastlane
 
         self.post_to_typetalk(message, topic_id, typetalk_token)
 
-        Helper.log.info 'Successfully sent Typetalk notification'.green
+        UI.success('Successfully sent Typetalk notification')
       end
 
       def self.post_to_typetalk(message, topic_id, typetalk_token)
@@ -47,7 +47,7 @@ module Fastlane
         when 200, 204
           true
         else
-          raise "Could not sent Typetalk notification".red
+          UI.user_error!("Could not sent Typetalk notification")
         end
       end
 

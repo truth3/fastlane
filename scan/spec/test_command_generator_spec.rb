@@ -13,7 +13,7 @@ describe Scan do
       expect do
         options = { project: "/notExistent" }
         Scan.config = FastlaneCore::Configuration.create(Scan::Options.available_options, options)
-      end.to raise_error "Project file not found at path '/notExistent'".red
+      end.to raise_error "Project file not found at path '/notExistent'"
     end
 
     it "supports additional parameters" do
@@ -28,16 +28,24 @@ describe Scan do
 
       result = Scan::TestCommandGenerator.generate
       expect(result).to start_with([
-        "set -o pipefail &&",
-        "env NSUnbufferedIO=YES xcodebuild",
-        "-scheme 'app'",
-        "-project './examples/standard/app.xcodeproj'",
-        "-sdk '9.0'",
-        "-destination '#{Scan.config[:destination]}'",
-        "DEBUG=1 BUNDLE_NAME=Example\\ App",
-        :build,
-        :test
-      ])
+                                     "set -o pipefail &&",
+                                     "env NSUnbufferedIO=YES xcodebuild",
+                                     "-scheme 'app'",
+                                     "-project './examples/standard/app.xcodeproj'",
+                                     "-sdk '9.0'",
+                                     "-destination '#{Scan.config[:destination]}'",
+                                     "DEBUG=1 BUNDLE_NAME=Example\\ App",
+                                     :build,
+                                     :test
+                                   ])
+    end
+
+    it "supports custom xcpretty formatter" do
+      options = { formatter: "custom-formatter", project: "./examples/standard/app.xcodeproj", sdk: "9.0" }
+      Scan.config = FastlaneCore::Configuration.create(Scan::Options.available_options, options)
+
+      result = Scan::TestCommandGenerator.generate
+      expect(result.last).to include(" | xcpretty -f `custom-formatter`")
     end
 
     describe "Standard Example" do
@@ -51,14 +59,14 @@ describe Scan do
 
         result = Scan::TestCommandGenerator.generate
         expect(result).to start_with([
-          "set -o pipefail &&",
-          "env NSUnbufferedIO=YES xcodebuild",
-          "-scheme 'app'",
-          "-project './examples/standard/app.xcodeproj'",
-          "-destination '#{Scan.config[:destination]}'",
-          :build,
-          :test
-        ])
+                                       "set -o pipefail &&",
+                                       "env NSUnbufferedIO=YES xcodebuild",
+                                       "-scheme 'app'",
+                                       "-project './examples/standard/app.xcodeproj'",
+                                       "-destination '#{Scan.config[:destination]}'",
+                                       :build,
+                                       :test
+                                     ])
       end
 
       it "#project_path_array" do
@@ -96,15 +104,15 @@ describe Scan do
 
         result = Scan::TestCommandGenerator.generate
         expect(result).to start_with([
-          "set -o pipefail &&",
-          "env NSUnbufferedIO=YES xcodebuild",
-          "-scheme 'app'",
-          "-project './examples/standard/app.xcodeproj'",
-          "-destination '#{Scan.config[:destination]}'",
-          "-derivedDataPath '/tmp/my/derived_data'",
-          :build,
-          :test
-        ])
+                                       "set -o pipefail &&",
+                                       "env NSUnbufferedIO=YES xcodebuild",
+                                       "-scheme 'app'",
+                                       "-project './examples/standard/app.xcodeproj'",
+                                       "-destination '#{Scan.config[:destination]}'",
+                                       "-derivedDataPath '/tmp/my/derived_data'",
+                                       :build,
+                                       :test
+                                     ])
       end
     end
 
@@ -117,15 +125,15 @@ describe Scan do
 
         result = Scan::TestCommandGenerator.generate
         expect(result).to start_with([
-          "set -o pipefail &&",
-          "env NSUnbufferedIO=YES xcodebuild",
-          "-scheme 'app'",
-          "-project './examples/standard/app.xcodeproj'",
-          "-destination '#{Scan.config[:destination]}'",
-          "-resultBundlePath './fastlane/test_output/app.test_result'",
-          :build,
-          :test
-        ])
+                                       "set -o pipefail &&",
+                                       "env NSUnbufferedIO=YES xcodebuild",
+                                       "-scheme 'app'",
+                                       "-project './examples/standard/app.xcodeproj'",
+                                       "-destination '#{Scan.config[:destination]}'",
+                                       "-resultBundlePath './fastlane/test_output/app.test_result'",
+                                       :build,
+                                       :test
+                                     ])
       end
     end
   end

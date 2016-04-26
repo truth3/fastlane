@@ -5,6 +5,7 @@ require 'coveralls'
 Coveralls.wear! unless ENV["FASTLANE_SKIP_UPDATE_CHECK"]
 
 require 'fastlane_core'
+UI = FastlaneCore::UI
 
 require 'webmock/rspec'
 
@@ -30,6 +31,14 @@ ensure
     ENV.delete(k) unless old_vals.include?(k)
     ENV[k] = old_vals[k]
   end
+end
+
+def with_verbose(verbose)
+  orig_verbose = $verbose
+  $verbose = verbose
+  yield if block_given?
+ensure
+  $verbose = orig_verbose
 end
 
 def stub_commander_runner_args(args)

@@ -23,11 +23,11 @@ module Fastlane
         response = https.request(req)
         case response.code.to_i
         when 200..299
-          Helper.log.info 'Successfully sent notification to ChatWork right now 📢'.green
+          UI.success('Successfully sent notification to ChatWork right now 📢')
         else
           require 'json'
           json = JSON.parse(response.body)
-          raise "HTTP Error: #{response.code} #{json['errors']}".red
+          UI.user_error!("HTTP Error: #{response.code} #{json['errors']}")
         end
       end
 
@@ -42,8 +42,8 @@ module Fastlane
                                        description: "ChatWork API Token",
                                        verify_block: proc do |value|
                                          unless value.to_s.length > 0
-                                           Helper.log.fatal "Please add 'ENV[\"CHATWORK_API_TOKEN\"] = \"your token\"' to your Fastfile's `before_all` section.".red
-                                           raise 'No CHATWORK_API_TOKEN given.'.red
+                                           UI.error("Please add 'ENV[\"CHATWORK_API_TOKEN\"] = \"your token\"' to your Fastfile's `before_all` section.")
+                                           UI.user_error!("No CHATWORK_API_TOKEN given.")
                                          end
                                        end),
           FastlaneCore::ConfigItem.new(key: :message,

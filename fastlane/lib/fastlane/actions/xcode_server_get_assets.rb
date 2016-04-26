@@ -30,56 +30,56 @@ module Fastlane
         xcs = XcodeServer.new(host, username, password)
         bots = xcs.fetch_all_bots
 
-        Helper.log.info "Fetched #{bots.count} Bots from Xcode Server at #{host}.".yellow
+        UI.important("Fetched #{bots.count} Bots from Xcode Server at #{host}.")
 
         # pull out names
         bot_names = bots.map { |bot| bot['name'] }
 
         # match the bot name with a found bot, otherwise fail
         found_bots = bots.select { |bot| bot['name'] == bot_name }
-        raise "Failed to find a Bot with name #{bot_name} on server #{host}, only available Bots: #{bot_names}".red if found_bots.count == 0
+        UI.user_error!("Failed to find a Bot with name #{bot_name} on server #{host}, only available Bots: #{bot_names}") if found_bots.count == 0
 
         bot = found_bots[0]
 
-        Helper.log.info "Found Bot with name #{bot_name} with id #{bot['_id']}.".green
+        UI.success("Found Bot with name #{bot_name} with id #{bot['_id']}.")
 
         # we have our bot, get finished integrations, sorted from newest to oldest
         integrations = xcs.fetch_integrations(bot['_id']).select { |i| i['currentStep'] == 'completed' }
-        raise "Failed to find any completed integration for Bot \"#{bot_name}\"".red if (integrations || []).count == 0
+        UI.user_error!("Failed to find any completed integration for Bot \"#{bot_name}\"") if (integrations || []).count == 0
 
         # if no integration number is specified, pick the newest one (this is sorted from newest to oldest)
         if integration_number_override
           integration = integrations.find { |i| i['number'] == integration_number_override }
-          raise "Specified integration number #{integration_number_override} does not exist.".red unless integration
+          UI.user_error!("Specified integration number #{integration_number_override} does not exist.") unless integration
         else
           integration = integrations.first
         end
 
         # consider: only taking the last successful one? or allow failing tests? warnings?
 
-        Helper.log.info "Using integration #{integration['number']}.".yellow
+        UI.important("Using integration #{integration['number']}.")
 
         # fetch assets for this integration
         assets_path = xcs.fetch_assets(integration['_id'], target_folder, self)
-        raise "Failed to fetch assets for integration #{integration['number']}." unless assets_path
+        UI.user_error!("Failed to fetch assets for integration #{integration['number']}.") unless assets_path
 
         asset_entries = Dir.entries(assets_path).map { |i| File.join(assets_path, i) }
 
-        Helper.log.info "Successfully downloaded #{asset_entries.count} assets to file #{assets_path}!".green
+        UI.success("Successfully downloaded #{asset_entries.count} assets to file #{assets_path}!")
 
         # now find the archive and unzip it
         zipped_archive_path = asset_entries.find { |i| i.end_with?('xcarchive.zip') }
 
         if zipped_archive_path
 
-          Helper.log.info "Found an archive in the assets folder...".yellow
+          UI.important("Found an archive in the assets folder...")
 
           archive_file_path = File.basename(zipped_archive_path, File.extname(zipped_archive_path))
           archive_dir_path = File.dirname(zipped_archive_path)
           archive_path = File.join(archive_dir_path, archive_file_path)
           if File.exist?(archive_path)
             # we already have the archive, skip
-            Helper.log.info "Archive #{archive_path} already exists, not unzipping again...".yellow
+            UI.important("Archive #{archive_path} already exists, not unzipping again...")
           else
             # unzip the archive
             sh "unzip -q \"#{zipped_archive_path}\" -d \"#{archive_dir_path}\""
@@ -117,14 +117,14 @@ module Fastlane
 
         def fetch_all_bots
           response = get_endpoint('/bots')
-          raise "You are unauthorized to access data on #{@host}, please check that you're passing in a correct username and password.".red if response.status == 401
-          raise "Failed to fetch Bots from Xcode Server at #{@host}, response: #{response.status}: #{response.body}.".red if response.status != 200
+          UI.user_error!("You are unauthorized to access data on #{@host}, please check that you're passing in a correct username and password.") if response.status == 401
+          UI.user_error!("Failed to fetch Bots from Xcode Server at #{@host}, response: #{response.status}: #{response.body}.") if response.status != 200
           JSON.parse(response.body)['results']
         end
 
         def fetch_integrations(bot_id)
           response = get_endpoint("/bots/#{bot_id}/integrations?last=10")
-          raise "Failed to fetch Integrations for Bot #{bot_id} from Xcode Server at #{@host}, response: #{response.status}: #{response.body}".red if response.status != 200
+          UI.user_error!("Failed to fetch Integrations for Bot #{bot_id} from Xcode Server at #{@host}, response: #{response.status}: #{response.body}") if response.status != 200
           JSON.parse(response.body)['results']
         end
 
@@ -135,9 +135,9 @@ module Fastlane
             f = open(temp_file, 'w')
             streamer = lambda do |chunk, remaining_bytes, total_bytes|
               if remaining_bytes && total_bytes
-                Helper.log.info "Downloading: #{100 - (100 * remaining_bytes.to_f / total_bytes.to_f).to_i}%".yellow
+                UI.important("Downloading: #{100 - (100 * remaining_bytes.to_f / total_bytes.to_f).to_i}%")
               else
-                Helper.log.error "#{chunk}".red
+                UI.error(chunk.to_s)
               end
               f.write(chunk)
             end
@@ -145,8 +145,8 @@ module Fastlane
             response = self.get_endpoint("/integrations/#{integration_id}/assets", streamer)
             f.close
 
-            raise "Integration doesn't have any assets (it probably never ran).".red if response.status == 500
-            raise "Failed to fetch Assets zip for Integration #{integration_id} from Xcode Server at #{@host}, response: #{response.status}: #{response.body}".red if response.status != 200
+            UI.user_error!("Integration doesn't have any assets (it probably never ran).") if response.status == 500
+            UI.user_error!("Failed to fetch Assets zip for Integration #{integration_id} from Xcode Server at #{@host}, response: #{response.status}: #{response.body}") if response.status != 200
 
             # unzip it, it's a .tar.gz file
             out_folder = File.join(dir, "out_#{rand(1000000)}")
@@ -161,7 +161,7 @@ module Fastlane
             # rename the folder in out_folder to asset_foldername
             found_folder = Dir.entries(out_folder).select { |item| item != '.' && item != '..' }[0]
 
-            raise "Internal error, couldn't find unzipped folder".red if found_folder.nil?
+            UI.user_error!("Internal error, couldn't find unzipped folder") if found_folder.nil?
 
             unzipped_folder_temp_name = File.join(out_folder, found_folder)
             unzipped_folder = File.join(out_folder, asset_foldername)

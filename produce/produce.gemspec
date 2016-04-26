@@ -22,16 +22,17 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency 'fastlane_core', '>= 0.30.0', '< 1.0.0' # all shared code and dependencies
-  spec.add_dependency 'spaceship', '>= 0.16.0' # Apple Dev Portal and iTunes Connect Access
+  spec.add_dependency 'spaceship', '>= 0.16.0', '< 1.0.0' # Apple Dev Portal and iTunes Connect Access
 
   # Development only
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rspec', '~> 3.1.0'
+  spec.add_development_dependency 'rspec_junit_formatter', '~> 0.2.3'
   spec.add_development_dependency 'pry'
   spec.add_development_dependency 'yard', '~> 0.8.7.4'
   spec.add_development_dependency 'webmock', '~> 1.19.0'
   spec.add_development_dependency 'coveralls'
   spec.add_development_dependency 'fastlane'
-  spec.add_development_dependency 'rubocop', '~> 0.35.1'
+  spec.add_development_dependency "rubocop", '~> 0.38.0'
 end

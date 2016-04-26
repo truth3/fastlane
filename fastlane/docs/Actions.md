@@ -55,9 +55,13 @@ More options are available:
 
 ```ruby
 carthage(
+  command: "bootstrap"    # One of: build, bootstrap, update, archive. (default: bootstrap)
   use_ssh: false,         # Use SSH for downloading GitHub repositories.
   use_submodules: false,  # Add dependencies as Git submodules.
   use_binaries: true,     # Check out dependency repositories even when prebuilt frameworks exist
+  no_build: false,        # When bootstrapping Carthage do not build
+  no_skip_current: false, # Don't skip building the current project (only for frameworks)
+  verbose: false,         # Print xcodebuild output inline
   platform: "all"         # Define which platform to build for
 )
 ```
@@ -187,7 +191,7 @@ clear_derived_data
 
 Build your app right inside `fastlane` and the path to the resulting ipa is automatically available to all other actions.
 
-You should check out the [code signing guide](https://github.com/fastlane/fastlane/blob/master/docs/CodeSigning.md).
+You should check out the [code signing guide](https://github.com/fastlane/fastlane/blob/master/fastlane/docs/CodeSigning.md).
 
 ```ruby
 ipa(
@@ -219,7 +223,7 @@ See how [Product Hunt](https://github.com/fastlane/examples/blob/master/ProductH
 
 ### update_project_provisioning
 
-You should check out the [code signing guide](https://github.com/fastlane/fastlane/blob/master/docs/CodeSigning.md) before using this action.
+You should check out the [code signing guide](https://github.com/fastlane/fastlane/blob/master/fastlane/docs/CodeSigning.md) before using this action.
 
 Updates your Xcode project to use a specific provisioning profile for code signing, so that you can properly build and sign the .ipa file using the [ipa](#ipa) action or a CI service.
 
@@ -400,7 +404,7 @@ import_certificate certificate_path: "certs/dist.p12", certificate_password: ENV
 
 **Note**: `xcodebuild` is a complex command, so it is recommended to use [gym](https://github.com/fastlane/fastlane/tree/master/gym) for building your ipa file and [scan](https://github.com/fastlane/fastlane/tree/master/scan) for testing your app instead.
 
-Make sure to also read the [code signing guide](https://github.com/fastlane/fastlane/blob/master/docs/CodeSigning.md).
+Make sure to also read the [code signing guide](https://github.com/fastlane/fastlane/blob/master/fastlane/docs/CodeSigning.md).
 
 ```ruby
 # Create an archive. (./build-dir/MyApp.xcarchive)
@@ -680,7 +684,7 @@ xcov(
   workspace: "YourWorkspace.xcworkspace",
   scheme: "YourScheme",
   output_directory: "xcov_output"
-)  
+)
 ```
 
 ### [OCLint](http://oclint.org)
@@ -722,7 +726,8 @@ swiftlint(
   files: [                              # List of files to process (optional)
     'AppDelegate.swift',
     'path/to/project/Model.swift'
-  ]
+  ],
+  ignore_exit_status: true              # Allow fastlane to continue even if SwiftLint returns a non-zero exit status
 )
 ```
 
@@ -871,17 +876,35 @@ crashlytics(
   ipa_path: './app.ipa'
 )
 ```
+
 Additionally you can specify `notes`, `emails`, `groups` and `notifications`.
 
+#### Distributing to Groups
+
+When using the `groups` parameter, it's important to use the group **alias** names for each group you'd like to distribute to. A group's alias can be found in the web UI. If you're viewing the Beta page, you can open the groups dialog here:
+
+![Crashlytics Beta Groups Navigation](../assets/Beta-Groups-Nav.png)
+
+Each group's alias is then listed here:
+
+![Crashlytics Beta Groups Navigation](../assets/Beta-Group-Alias.png)
+
+There are a couple reasons why aliases exist:
+
+1. They are restricted to a safer set of characters to try to make command line invocations a bit easier
+1. They are created once when the group is created, but are not affected by later edits to the group. This allows your scripts to be stable, even if you decide to change the group's name.
+
+So, for the example group above, you should specify
+
+`groups: ["dev-team-1"]` :white_check_mark:
+
+_not_
+
+`groups: ["Android Devs"]` :x:
+
+#### Environment Variables
+
 The following environment variables may be used in place of parameters: `CRASHLYTICS_API_TOKEN`, `CRASHLYTICS_BUILD_SECRET`, and `CRASHLYTICS_FRAMEWORK_PATH`.
-
-### [upload_symbols_to_crashlytics]
-
-This action allows you to upload symbolication files to Crashlytics. It's extra useful if you use it to download the latest dSYM files from Apple when you use Bitcode.
-
-```ruby
-upload_symbols_to_crashlytics(dsym_path: "./App.dSYM.zip")
-```
 
 ### `download_dsyms`
 
@@ -894,6 +917,29 @@ lane :refresh_dsyms do
   clean_build_artifacts           # Delete the local dSYM files
 end
 ```
+
+### `upload_symbols_to_crashlytics`
+
+This action allows you to upload symbolication files to Crashlytics. It's extra useful if you use it to download the latest dSYM files from Apple when you use Bitcode.
+
+```ruby
+upload_symbols_to_crashlytics(dsym_path: "./App.dSYM.zip")
+```
+
+### [upload_symbols_to_sentry](https://getsentry.com)
+
+This action allows you to upload symbolication files to Sentry.
+
+```ruby
+upload_symbols_to_sentry(
+  api_key: '...',
+  org_slug: '...',
+  project_slug: '...',
+  dsym_path: './App.dSYM.zip'
+)
+```
+
+The following environment variables may be used in place of parameters: `SENTRY_API_KEY`, `SENTRY_ORG_SLUG`, `SENTRY_PROJECT_SLUG`, and `SENTRY_DSYM_PATH`.
 
 
 ### AWS S3 Distribution
@@ -943,6 +989,7 @@ deploygate(
   user: 'target username or organization name',
   ipa: './ipa_file.ipa',
   message: "Build #{lane_context[SharedValues::BUILD_NUMBER]}",
+  distribution_key: '(Optional) Target Distribution Key'
 )
 ```
 
@@ -1237,7 +1284,7 @@ update_info_plist(
   plist_path: "path/to/Info.plist",
   block: lambda { |plist|
     urlScheme = plist['CFBundleURLTypes'].find{|scheme| scheme['CFBundleURLName'] == 'com.acme.default-url-handler'}
-    urlScheme[:CFBundleURLSchemes] = ['acme-production']    
+    urlScheme[:CFBundleURLSchemes] = ['acme-production']
   }
 )
 ```
@@ -1587,7 +1634,7 @@ push_to_git_remote(
   remote: 'origin',         # optional, default: 'origin'
   local_branch: 'develop',  # optional, aliased by 'branch', default: 'master'
   remote_branch: 'develop', # optional, default is set to local_branch
-  force: true,              # optional, default: false
+  force: true               # optional, default: false
 )
 ```
 
@@ -1886,6 +1933,21 @@ onesignal(
   apns_env: "production/sandbox (defaults to production)"
 )
 ```
+
+### [Flock](http://flock.co)
+
+Send a text message to a Flock group.
+
+```ruby
+flock(
+  message: "Hello"
+  token: "xxx"
+)
+```
+
+To obtain the token, create a new
+[incoming message webhook](https://dev.flock.co/wiki/display/FlockAPI/Incoming+Webhooks)
+in your Flock admin panel.
 
 ## Other
 
@@ -2385,6 +2447,16 @@ rsync(
 )
 ```
 
+### zip
+
+Compress a file or directory
+
+```ruby
+zip(path: "MyApp.app")
+
+zip(path: "MyApp.app", output_name: "Latest.app.zip")
+```
+
 ### ifttt
 
 Connect to the IFTTT [Maker Channel](https://ifttt.com/maker). An IFTTT Recipe has two components: a Trigger and an Action. In this case, the Trigger will fire every time the Maker Channel receives a web request (made by this `fastlane` action) to notify it of an event. The Action can be anything that IFTTT supports: email, SMS, etc.
@@ -2397,4 +2469,22 @@ ifttt(
   value2: "bar",
   value3: "baz"
 )
+```
+
+### reset_simulators
+
+Reset all the iOS simulators. Useful with test actions to ensure a clean simulator.
+
+```ruby
+reset_simulators
+```
+
+### [danger](https://github.com/danger/danger)
+
+To run [danger](https://github.com/danger/danger) add this to your `Fastfile`
+
+```ruby
+lane :danger do
+  danger
+end
 ```

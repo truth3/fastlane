@@ -21,7 +21,7 @@ describe FastlaneCore do
           FastlaneCore::ConfigItem.new(key: :app_identifier,
                                        description: "Mac",
                                        verify_block: proc do |value|
-                                         raise "Invalid identifier '#{value}'" unless value.split('.').count == 3
+                                         UI.user_error!("Invalid identifier '#{value}'") unless value.split('.').count == 3
                                        end),
           FastlaneCore::ConfigItem.new(key: :apple_id,
                                        description: "yo",
@@ -40,14 +40,14 @@ describe FastlaneCore do
         expect do
           config = FastlaneCore::Configuration.create(options, {})
           config.load_configuration_file("ConfigFileInvalidIdentifier")
-        end.to raise_error "Invalid identifier 'such invalid'"
+        end.to raise_error("Invalid identifier 'such invalid'")
       end
 
       it "raises an exception if method is not available" do
         expect do
           config = FastlaneCore::Configuration.create(options, {})
           config.load_configuration_file("ConfigFileKeyNotHere")
-        end.to raise_error (/Could not find option \'not_existent\' in the list of available options.*/)
+        end.to raise_error(/Could not find option \'not_existent\' in the list of available options.*/)
       end
 
       it "overwrites existing values" do
@@ -94,9 +94,9 @@ describe FastlaneCore do
               expect do
                 block.call(arguments.first, "custom")
               end.to raise_error "Yeah: parameter custom"
-            else raise 'no'
+            else UI.user_error!("no")
             end
-          else raise 'no'
+          else UI.user_error!("no")
           end
         end)
       end

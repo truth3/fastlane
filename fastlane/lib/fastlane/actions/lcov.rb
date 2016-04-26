@@ -8,7 +8,7 @@ module Fastlane
 
       def self.run(options)
         unless Helper.test?
-          raise 'lcov not installed, please install using `brew install lcov`'.red if `which lcov`.length == 0
+          UI.user_error!("lcov not installed, please install using `brew install lcov`") if `which lcov`.length == 0
         end
         gen_cov(options)
       end
@@ -78,7 +78,7 @@ module Fastlane
       end
 
       def self.find_project_dir(project_name, path)
-        `ls -t #{path}| grep #{project_name} | head -1`.to_s.gsub(/\n/, "")
+        `ls -t #{path}| grep #{project_name} | head -1`.to_s.delete("\n")
       end
 
       def self.exclude_dirs

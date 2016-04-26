@@ -37,23 +37,24 @@ module Gym
 
       # We export the ipa into this directory, as we can't specify the ipa file directly
       def temporary_output_path
-        Gym.cache[:temporary_output_path] ||= "#{Tempfile.new('gym').path}.gym_output"
+        Gym.cache[:temporary_output_path] ||= Dir.mktmpdir('gym_output')
       end
 
       def ipa_path
         unless Gym.cache[:ipa_path]
           path = Dir[File.join(temporary_output_path, "*.ipa")].last
+          # We need to process generic IPA
           if path
             # Try to find IPA file in the output directory, used when app thinning was not set
             Gym.cache[:ipa_path] = File.join(temporary_output_path, "#{Gym.config[:output_name]}.ipa")
-            FileUtils.mv(path, Gym.cache[:ipa_path]) if File.expand_path(path).downcase != File.expand_path(Gym.cache[:ipa_path]).downcase
+            FileUtils.mv(path, Gym.cache[:ipa_path]) unless File.expand_path(path).casecmp(File.expand_path(Gym.cache[:ipa_path]).downcase).zero?
           elsif Dir.exist?(apps_path)
             # Try to find "generic" IPA file inside "Apps" folder, used when app thinning was set
             files = Dir[File.join(apps_path, "*.ipa")]
             # Generic IPA file doesn't have suffix so its name is the shortest
             path = files.min_by(&:length)
             Gym.cache[:ipa_path] = File.join(temporary_output_path, "#{Gym.config[:output_name]}.ipa")
-            FileUtils.cp(path, Gym.cache[:ipa_path]) if File.expand_path(path).downcase != File.expand_path(Gym.cache[:ipa_path]).downcase
+            FileUtils.cp(path, Gym.cache[:ipa_path]) unless File.expand_path(path).casecmp(File.expand_path(Gym.cache[:ipa_path]).downcase).zero?
           else
             ErrorHandler.handle_empty_archive unless path
           end
@@ -68,7 +69,7 @@ module Gym
 
       # The path the config file we use to sign our app
       def config_path
-        Gym.cache[:config_path] ||= "#{Tempfile.new('gym').path}_config.plist"
+        Gym.cache[:config_path] ||= "#{Tempfile.new('gym_config').path}.plist"
         return Gym.cache[:config_path]
       end
 
@@ -162,7 +163,7 @@ module Gym
       def print_legacy_information
         if Gym.config[:provisioning_profile_path]
           UI.important "You're using Xcode 7, the `provisioning_profile_path` value will be ignored"
-          UI.important "Please follow the Code Signing Guide: https://github.com/fastlane/fastlane/blob/master/docs/CodeSigning.md"
+          UI.important "Please follow the Code Signing Guide: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/CodeSigning.md"
         end
       end
     end

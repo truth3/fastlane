@@ -15,12 +15,11 @@ module Fastlane
     end
 
     def self.available_options
-      # Return an array of 2-3 element arrays, like:
       # [
-      #   ['app_identifier', 'This value is responsible for X', 'ENVIRONMENT_VARIABLE'],
-      #   ['app_identifier', 'This value is responsible for X']
+      #   FastlaneCore::ConfigItem.new(key: :ipa_path,
+      #                                env_name: "CRASHLYTICS_IPA_PATH",
+      #                                description: "Value Description")
       # ]
-      # Take a look at sigh.rb if you're using the config manager of fastlane
       nil
     end
 
@@ -53,7 +52,7 @@ module Fastlane
       #
       #  [:ios, :mac].include?(platform)
       #
-      raise "Implementing `is_supported?` for all actions is mandatory. Please update #{self}".red
+      UI.crash!("Implementing `is_supported?` for all actions is mandatory. Please update #{self}")
     end
 
     # Is printed out in the Steps: output in the terminal

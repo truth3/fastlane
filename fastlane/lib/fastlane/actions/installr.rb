@@ -8,16 +8,16 @@ module Fastlane
       INSTALLR_API = "https://www.installrapp.com/apps.json"
 
       def self.run(params)
-        Helper.log.info 'Upload to Installr has been started. This may take some time.'.green
+        UI.success('Upload to Installr has been started. This may take some time.')
 
         response = self.upload_build(params)
 
         case response.status
         when 200...300
           Actions.lane_context[SharedValues::INSTALLR_BUILD_INFORMATION] = response.body
-          Helper.log.info 'Build successfully uploaded to Installr!'.green
+          UI.success('Build successfully uploaded to Installr!')
         else
-          raise "Error when trying to upload build file to Installr: #{response.body}".red
+          UI.user_error!("Error when trying to upload build file to Installr: #{response.body}")
         end
       end
 
@@ -69,14 +69,14 @@ module Fastlane
                                      env_name: "INSTALLR_API_TOKEN",
                                      description: "API Token for Installr Access",
                                      verify_block: proc do |value|
-                                       raise "No API token for Installr given, pass using `api_token: 'token'`".red unless value and !value.empty?
+                                       UI.user_error!("No API token for Installr given, pass using `api_token: 'token'`") unless value and !value.empty?
                                      end),
           FastlaneCore::ConfigItem.new(key: :ipa,
                                      env_name: "INSTALLR_IPA_PATH",
                                      description: "Path to your IPA file. Optional if you use the `gym` or `xcodebuild` action",
                                      default_value: Actions.lane_context[SharedValues::IPA_OUTPUT_PATH],
                                      verify_block: proc do |value|
-                                       raise "Couldn't find build file at path '#{value}'".red unless File.exist?(value)
+                                       UI.user_error!("Couldn't find build file at path '#{value}'") unless File.exist?(value)
                                      end),
           FastlaneCore::ConfigItem.new(key: :notes,
                                      env_name: "INSTALLR_NOTES",

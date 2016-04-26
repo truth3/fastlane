@@ -1,4 +1,3 @@
-# rubocop:disable Metrics/AbcSize
 require 'rubygems/spec_fetcher'
 require 'rubygems/command_manager'
 
@@ -28,6 +27,7 @@ module Fastlane
         "match"
       ]
 
+      # rubocop:disable Metrics/AbcSize
       def self.run(options)
         if options[:no_update]
           return
@@ -37,11 +37,11 @@ module Fastlane
         tools_to_update ||= all_installed_tools
 
         if tools_to_update.count == 0
-          Helper.log.error "No tools specified or couldn't find any installed fastlane.tools".red
+          UI.error("No tools specified or couldn't find any installed fastlane.tools")
           return
         end
 
-        Helper.log.info "Looking for updates for #{tools_to_update.join(', ')}..."
+        UI.message("Looking for updates for #{tools_to_update.join(', ')}...")
 
         updater = Gem::CommandManager.instance[:update]
         cleaner = Gem::CommandManager.instance[:cleanup]
@@ -49,9 +49,18 @@ module Fastlane
         sudo_needed = !File.writable?(Gem.dir)
 
         if sudo_needed
-          Helper.log.warn "It seems that your Gem directory is not writable by your current User."
-          Helper.log.warn "Fastlane would need sudo rights to update itself, however, running 'sudo fastlane' is not recommended."
-          Helper.log.warn "If you still want to use this action, please read the Actions.md documentation on a guide how to set this up."
+          UI.important("It seems that your Gem directory is not writable by your current User.")
+          UI.important("Fastlane would need sudo rights to update itself, however, running 'sudo fastlane' is not recommended.")
+          UI.important("If you still want to use this action, please read the Actions.md documentation on a guide how to set this up.")
+          return
+        end
+
+        unless updater.respond_to? :highest_installed_gems
+          UI.important "The update_fastlane action requires rubygems version 2.1.0 or greater."
+          UI.important "Please update your version of ruby gems before proceeding."
+          UI.command "gem install rubygems-update"
+          UI.command "update_rubygems"
+          UI.command "gem update --system"
           return
         end
 
@@ -59,7 +68,7 @@ module Fastlane
         update_needed = updater.which_to_update(highest_versions, tools_to_update)
 
         if update_needed.count == 0
-          Helper.log.info "Nothing to update ✅".green
+          UI.success("Nothing to update ✅")
           return
         end
 
@@ -71,12 +80,12 @@ module Fastlane
           local_version = Gem::Version.new(highest_versions[tool].version)
           update_url = FastlaneCore::UpdateChecker.generate_fetch_url(tool)
           latest_version = FastlaneCore::UpdateChecker.fetch_latest(update_url)
-          Helper.log.info "Updating #{tool} from #{local_version} to #{latest_version} ... 🚀"
+          UI.message("Updating #{tool} from #{local_version} to #{latest_version} ... 🚀")
 
           # Approximate_recommendation will create a string like "~> 0.10" from a version 0.10.0, e.g. one that is valid for versions >= 0.10 and <1.0
           updater.update_gem tool, Gem::Requirement.new(local_version.approximate_recommendation)
 
-          Helper.log.info "Finished updating #{tool}"
+          UI.message("Finished updating #{tool}")
         end
 
         all_updated_tools = updater.installer.installed_gems.select do |updated_tool|
@@ -84,17 +93,18 @@ module Fastlane
         end
 
         if all_updated_tools.empty?
-          Helper.log.info "All fastlane tools are up-to-date!"
+          UI.message("All fastlane tools are up-to-date!")
         else
-          Helper.log.info "Cleaning up old versions..."
+          UI.message("Cleaning up old versions...")
           cleaner.options[:args] = all_updated_tools.map(&:name)
           cleaner.execute
-          Helper.log.info "fastlane.tools successfully updated! I will now restart myself... 😴"
+          UI.message("fastlane.tools successfully updated! I will now restart myself... 😴")
 
           # Set no_update to true so we don't try to update again
           exec "FL_NO_UPDATE=true #{$PROGRAM_NAME} #{ARGV.join ' '}"
         end
       end
+      # rubocop:enable Metrics/AbcSize
 
       def self.all_installed_tools
         Gem::Specification.select { |s| ALL_TOOLS.include? s.name }.map(&:name).uniq
@@ -128,4 +138,3 @@ module Fastlane
     end
   end
 end
-# rubocop:enable Metrics/AbcSize

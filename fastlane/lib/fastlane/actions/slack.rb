@@ -44,10 +44,10 @@ module Fastlane
                                attachments: [slack_attachment]
 
         if result.code.to_i == 200
-          Helper.log.info 'Successfully sent Slack notification'.green
+          UI.success('Successfully sent Slack notification')
         else
-          Helper.log.debug result
-          raise 'Error pushing Slack message, maybe the integration has no permission to post on this channel? Try removing the channel parameter in your Fastfile.'.red
+          UI.verbose(result)
+          UI.user_error!("Error pushing Slack message, maybe the integration has no permission to post on this channel? Try removing the channel parameter in your Fastfile.")
         end
       end
 
@@ -75,7 +75,7 @@ module Fastlane
                                        env_name: "SLACK_URL",
                                        description: "Create an Incoming WebHook for your Slack group",
                                        verify_block: proc do |value|
-                                         raise "Invalid URL, must start with https://" unless value.start_with? "https://"
+                                         UI.user_error!("Invalid URL, must start with https://") unless value.start_with? "https://"
                                        end),
           FastlaneCore::ConfigItem.new(key: :username,
                                        env_name: "FL_SLACK_USERNAME",

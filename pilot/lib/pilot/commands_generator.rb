@@ -27,6 +27,7 @@ module Pilot
     def handle_multiple(action, args, options)
       mgr = Pilot::TesterManager.new
       config = FastlaneCore::Configuration.create(Pilot::Options.available_options, convert_options(options))
+      args.push(config[:email]) if config[:email] && args.empty?
       args.push(ask("Email address of the tester: ".yellow)) if args.empty?
       failures = []
       args.each do |address|
@@ -35,10 +36,10 @@ module Pilot
           mgr.public_send(action, config)
         rescue => ex
           failures.push(address)
-          Helper.log.info "[#{address}]: #{ex}".red
+          UI.message("[#{address}]: #{ex}")
         end
       end
-      raise "Some operations failed: #{failures}".red unless failures.empty?
+      UI.user_error!("Some operations failed: #{failures}") unless failures.empty?
     end
 
     def run

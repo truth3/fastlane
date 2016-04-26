@@ -11,7 +11,7 @@ module Fastlane
         require 'uri'
         require 'base64'
 
-        Helper.log.info "Parameter App name: #{params[:app_name]}"
+        UI.message("Parameter App name: #{params[:app_name]}")
         auth_token = params[:auth_token]
         app_name = params[:app_name]
         apns_p12_password = params[:apns_p12_password]
@@ -51,7 +51,7 @@ module Fastlane
         when 200, 204
           puts "Succesfully created new OneSignal app".green
         else
-          raise "Unexpected #{response.code} with response: #{response.body}".red
+          UI.user_error!("Unexpected #{response.code} with response: #{response.body}")
         end
       end
 
@@ -70,8 +70,8 @@ module Fastlane
                                       description: "OneSignal Authorization Key",
                                       verify_block: proc do |value|
                                         unless value.to_s.length > 0
-                                          Helper.log.fatal "Please add 'ENV[\"ONE_SIGNAL_AUTH_KEY\"] = \"your token\"' to your Fastfile's `before_all` section.".red
-                                          raise 'No ONE_SIGNAL_AUTH_KEY given.'.red
+                                          UI.error("Please add 'ENV[\"ONE_SIGNAL_AUTH_KEY\"] = \"your token\"' to your Fastfile's `before_all` section.")
+                                          UI.user_error!("No ONE_SIGNAL_AUTH_KEY given.")
                                         end
                                       end),
 
@@ -80,8 +80,8 @@ module Fastlane
                                        description: "OneSignal App Name",
                                        verify_block: proc do |value|
                                          unless value.to_s.length > 0
-                                           Helper.log.fatal "Please add 'ENV[\"ONE_SIGNAL_APP_NAME\"] = \"Your app name\"' to your Fastfile's `before_all` section.".red
-                                           raise 'No ONE_SIGNAL_APP_NAME given.'.red
+                                           UI.error("Please add 'ENV[\"ONE_SIGNAL_APP_NAME\"] = \"Your app name\"' to your Fastfile's `before_all` section.")
+                                           UI.user_error!("No ONE_SIGNAL_APP_NAME given.")
                                          end
                                        end),
 

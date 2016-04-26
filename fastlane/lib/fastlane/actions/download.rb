@@ -17,7 +17,7 @@ module Fastlane
           end
           Actions.lane_context[SharedValues::DOWNLOAD_CONTENT] = result
         rescue => ex
-          raise "Error fetching remote file: #{ex}"
+          UI.user_error!("Error fetching remote file: #{ex}")
         end
       end
 
@@ -43,7 +43,7 @@ module Fastlane
                                        env_name: "FL_DOWNLOAD_URL",
                                        description: "The URL that should be downloaded",
                                        verify_block: proc do |value|
-                                         Helper.log.warn "The URL doesn't start with http or https" unless value.start_with?("http")
+                                         UI.important("The URL doesn't start with http or https") unless value.start_with?("http")
                                        end)
         ]
       end

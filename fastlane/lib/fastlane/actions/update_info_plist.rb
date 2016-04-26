@@ -10,7 +10,7 @@ module Fastlane
         # Check if parameters are set
         if params[:app_identifier] or params[:display_name] or params[:block]
           if (params[:app_identifier] or params[:display_name]) and params[:block]
-            Helper.log.warn("block parameter can not be specified with app_identifier or display_name")
+            UI.important("block parameter can not be specified with app_identifier or display_name")
             return false
           end
 
@@ -19,7 +19,7 @@ module Fastlane
 
           # Read existing plist file
           info_plist_path = File.join(folder, "..", params[:plist_path])
-          raise "Couldn't find info plist file at path '#{params[:plist_path]}'".red unless File.exist?(info_plist_path)
+          UI.user_error!("Couldn't find info plist file at path '#{params[:plist_path]}'") unless File.exist?(info_plist_path)
           plist = Plist.parse_xml(info_plist_path)
 
           # Update plist values
@@ -31,10 +31,10 @@ module Fastlane
           plist_string = Plist::Emit.dump(plist)
           File.write(info_plist_path, plist_string)
 
-          Helper.log.info "Updated #{params[:plist_path]} 💾.".green
+          UI.success("Updated #{params[:plist_path]} 💾.")
           plist_string
         else
-          Helper.log.warn("You haven't specified any parameters to update your plist.")
+          UI.important("You haven't specified any parameters to update your plist.")
           false
         end
       end
@@ -59,14 +59,14 @@ module Fastlane
                                        description: "Path to your Xcode project",
                                        optional: true,
                                        verify_block: proc do |value|
-                                         raise "Please pass the path to the project, not the workspace".red if value.end_with? ".xcworkspace"
-                                         raise "Could not find Xcode project".red unless File.exist?(value)
+                                         UI.user_error!("Please pass the path to the project, not the workspace") if value.end_with? ".xcworkspace"
+                                         UI.user_error!("Could not find Xcode project") unless File.exist?(value)
                                        end),
           FastlaneCore::ConfigItem.new(key: :plist_path,
                                        env_name: "FL_UPDATE_PLIST_PATH",
                                        description: "Path to info plist",
                                        verify_block: proc do |value|
-                                         raise "Invalid plist file".red unless value[-6..-1].downcase == ".plist"
+                                         UI.user_error!("Invalid plist file") unless value[-6..-1].casecmp(".plist").zero?
                                        end),
           FastlaneCore::ConfigItem.new(key: :app_identifier,
                                        env_name: 'FL_UPDATE_PLIST_APP_IDENTIFIER',
