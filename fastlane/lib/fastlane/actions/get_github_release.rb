@@ -7,38 +7,36 @@ module Fastlane
     class GetGithubReleaseAction < Action
       def self.run(params)
         UI.message("Getting release on GitHub (#{params[:server_url]}/#{params[:url]}: #{params[:version]})")
-        require 'excon'
-        require 'base64'
 
-        server_url = params[:server_url]
-        server_url = server_url[0..-2] if server_url.end_with? '/'
+        GithubApiAction.run(
+          server_url: params[:server_url],
+          api_token: params[:api_token],
+          http_method: 'GET',
+          path: "repos/#{params[:url]}/releases",
+          error_handlers: {
+            404 => proc do |result|
+              UI.error("Repository #{params[:url]} cannot be found, please double check its name and that you provided a valid API token (if it's a private repository).")
+              return nil
+            end,
+            401 => proc do |result|
+              UI.error("You are not authorized to access #{params[:url]}, please make sure you provided a valid API token.")
+              return nil
+            end,
+            '*' => proc do |result|
+              UI.error("GitHub responded with #{result[:status]}:#{result[:body]}")
+              return nil
+            end
+          }
+        ) do |result|
+          json = result[:json]
+          json.each do |current|
+            next unless current['tag_name'] == params[:version]
 
-        headers = { 'User-Agent' => 'fastlane-get_github_release' }
-        headers['Authorization'] = "Basic #{Base64.strict_encode64(params[:api_token])}" if params[:api_token]
-        response = Excon.get("#{server_url}/repos/#{params[:url]}/releases", headers: headers)
-
-        case response[:status]
-        when 404
-          UI.error("Repository #{params[:url]} cannot be found, please double check its name and that you provided a valid API token (if it's a private repository).")
-          return nil
-        when 401
-          UI.error("You are not authorized to access #{params[:url]}, please make sure you provided a valid API token.")
-          return nil
-        else
-          if response[:status] != 200
-            UI.error("GitHub responded with #{response[:status]}:#{response[:body]}")
-            return nil
+            # Found it
+            Actions.lane_context[SharedValues::GET_GITHUB_RELEASE_INFO] = current
+            UI.message("Version is already live on GitHub.com 🚁")
+            return current
           end
-        end
-
-        result = JSON.parse(response.body)
-        result.each do |current|
-          next unless current['tag_name'] == params[:version]
-
-          # Found it
-          Actions.lane_context[SharedValues::GET_GITHUB_RELEASE_INFO] = current
-          UI.message("Version is already live on GitHub.com 🚁")
-          return current
         end
 
         UI.important("Couldn't find GitHub release #{params[:version]}")
@@ -89,7 +87,7 @@ module Fastlane
                  "tarball_url"=>"https://api.github.com/repos/KrauseFx/fastlane/tarball/1.8.0",
                  "zipball_url"=>"https://api.github.com/repos/KrauseFx/fastlane/zipball/1.8.0",
                  "body"=> ...Markdown...
-                "This is one of the biggest updates of `fastlane` yet"
+                "This is one of the biggest updates of _fastlane_ yet"
               }'
 
         [
@@ -125,18 +123,36 @@ module Fastlane
                                        env_name: "FL_GET_GITHUB_RELEASE_VERSION",
                                        description: "The version tag of the release to check"),
           FastlaneCore::ConfigItem.new(key: :api_token,
-                             env_name: "FL_GITHUB_RELEASE_API_TOKEN",
-                             description: "GitHub Personal Token (required for private repositories)",
-                             optional: true)
+                                       env_name: "FL_GITHUB_RELEASE_API_TOKEN",
+                                       sensitive: true,
+                                       description: "GitHub Personal Token (required for private repositories)",
+                                       optional: true)
         ]
       end
 
       def self.authors
-        ["KrauseFx", "czechboy0", "jaleksynas"]
+        ["KrauseFx", "czechboy0", "jaleksynas", "tommeier"]
       end
 
       def self.is_supported?(platform)
         true
+      end
+
+      def self.example_code
+        [
+          'release = get_github_release(url: "fastlane/fastlane", version: "1.0.0")
+          puts release["name"]'
+        ]
+      end
+
+      def self.sample_return_value
+        {
+          "name" => "name"
+        }
+      end
+
+      def self.category
+        :source_control
       end
     end
   end

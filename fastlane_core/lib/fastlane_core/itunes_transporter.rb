@@ -12,6 +12,10 @@ module FastlaneCore
   class TransporterTransferError < StandardError
   end
 
+  # Used internally
+  class TransporterRequiresApplicationSpecificPasswordError < StandardError
+  end
+
   # Base class for executing the iTMSTransporter
   class TransporterExecutor
     ERROR_REGEX = />\s*ERROR:\s+(.+)/
@@ -28,6 +32,7 @@ module FastlaneCore
 
       @errors = []
       @warnings = []
+      @all_lines = []
 
       if hide_output
         # Show a one time message instead
@@ -39,6 +44,7 @@ module FastlaneCore
         PTY.spawn(command) do |stdin, stdout, pid|
           begin
             stdin.each do |line|
+              @all_lines << line
               parse_line(line, hide_output) # this is where the parsing happens
             end
           rescue Errno::EIO
@@ -61,11 +67,28 @@ module FastlaneCore
         UI.important(@warnings.join("\n"))
       end
 
-      if @errors.count > 0
+      if @errors.join("").include?("app-specific")
+        raise TransporterRequiresApplicationSpecificPasswordError
+      end
+
+      if @errors.count > 0 && @all_lines.count > 0
+        # Print out the last 15 lines, this is key for non-verbose mode
+        @all_lines.last(15).each do |line|
+          UI.important("[iTMSTransporter] #{line}")
+        end
+        UI.message("iTunes Transporter output above ^")
         UI.error(@errors.join("\n"))
       end
 
-      @errors.count.zero?
+      # this is to handle GitHub issue #1896, which occurs when an
+      #  iTMSTransporter file transfer fails; iTMSTransporter will log an error
+      #  but will then retry; if that retry is successful, we will see the error
+      #  logged, but since the status code is zero, we want to return success
+      if @errors.count > 0 && exit_status.zero?
+        UI.important("Although errors occurred during execution of iTMSTransporter, it returned success status.")
+      end
+
+      exit_status.zero?
     end
 
     private
@@ -77,7 +100,7 @@ module FastlaneCore
 
       re = Regexp.union(SKIP_ERRORS)
       if line.match(re)
-        # Those lines will not be handle like errors or warnings
+        # Those lines will not be handled like errors or warnings
 
       elsif line =~ ERROR_REGEX
         @errors << $1
@@ -85,13 +108,13 @@ module FastlaneCore
 
         # Check if it's a login error
         if $1.include? "Your Apple ID or password was entered incorrectly" or
-           $1.include? "This Apple ID has been locked for security reasons"
+           $1.include? "This Apple ID has been locked for security reasons"
 
           unless Helper.is_test?
             CredentialsManager::AccountManager.new(user: @user).invalid_credentials
             UI.error("Please run this tool again to apply the new password")
           end
-        elsif $1.include? "Redundant Binary Upload. There already exists a binary upload with build"
+        elsif $1.include?("Redundant Binary Upload. There already exists a binary upload with build")
           UI.error($1)
           UI.error("You have to change the build number of your app to upload your ipa file")
         end
@@ -125,7 +148,7 @@ module FastlaneCore
 
   # Generates commands and executes the iTMSTransporter through the shell script it provides by the same name
   class ShellScriptTransporterExecutor < TransporterExecutor
-    def build_upload_command(username, password, source = "/tmp")
+    def build_upload_command(username, password, source = "/tmp", provider_short_name = "")
       [
         '"' + Helper.transporter_path + '"',
         "-m upload",
@@ -134,24 +157,26 @@ module FastlaneCore
         "-f '#{source}'",
         ENV["DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS"], # that's here, because the user might overwrite the -t option
         "-t 'Signiant'",
-        "-k 100000"
-      ].join(' ')
+        "-k 100000",
+        ("-itc_provider #{provider_short_name}" unless provider_short_name.to_s.empty?)
+      ].compact.join(' ')
     end
 
-    def build_download_command(username, password, apple_id, destination = "/tmp")
+    def build_download_command(username, password, apple_id, destination = "/tmp", provider_short_name = "")
       [
         '"' + Helper.transporter_path + '"',
         "-m lookupMetadata",
         "-u \"#{username}\"",
         "-p #{shell_escaped_password(password)}",
         "-apple_id #{apple_id}",
-        "-destination '#{destination}'"
-      ].join(' ')
+        "-destination '#{destination}'",
+        ("-itc_provider #{provider_short_name}" unless provider_short_name.to_s.empty?)
+      ].compact.join(' ')
     end
 
     def handle_error(password)
       # rubocop:disable Style/CaseEquality
-      unless /^[0-9a-zA-Z\.\$\_]*$/ === password
+      unless password === /^[0-9a-zA-Z\.\$\_]*$/
         UI.error([
           "Password contains special characters, which may not be handled properly by iTMSTransporter.",
           "If you experience problems uploading to iTunes Connect, please consider changing your password to something with only alphanumeric characters."
@@ -182,7 +207,7 @@ module FastlaneCore
   # Generates commands and executes the iTMSTransporter by invoking its Java app directly, to avoid the crazy parameter
   # escaping problems in its accompanying shell script.
   class JavaTransporterExecutor < TransporterExecutor
-    def build_upload_command(username, password, source = "/tmp")
+    def build_upload_command(username, password, source = "/tmp", provider_short_name = "")
       [
         Helper.transporter_java_executable_path.shellescape,
         "-Djava.ext.dirs=#{Helper.transporter_java_ext_dir.shellescape}",
@@ -192,8 +217,7 @@ module FastlaneCore
         '-Xms1024m',
         '-Djava.awt.headless=true',
         '-Dsun.net.http.retryPost=false',
-        "-classpath #{Helper.transporter_java_jar_path.shellescape}",
-        'com.apple.transporter.Application',
+        java_code_option,
         '-m upload',
         "-u #{username.shellescape}",
         "-p #{password.shellescape}",
@@ -201,11 +225,12 @@ module FastlaneCore
         ENV["DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS"], # that's here, because the user might overwrite the -t option
         '-t Signiant',
         '-k 100000',
+        ("-itc_provider #{provider_short_name}" unless provider_short_name.to_s.empty?),
         '2>&1' # cause stderr to be written to stdout
       ].compact.join(' ') # compact gets rid of the possibly nil ENV value
     end
 
-    def build_download_command(username, password, apple_id, destination = "/tmp")
+    def build_download_command(username, password, apple_id, destination = "/tmp", provider_short_name = "")
       [
         Helper.transporter_java_executable_path.shellescape,
         "-Djava.ext.dirs=#{Helper.transporter_java_ext_dir.shellescape}",
@@ -215,15 +240,23 @@ module FastlaneCore
         '-Xms1024m',
         '-Djava.awt.headless=true',
         '-Dsun.net.http.retryPost=false',
-        "-classpath #{Helper.transporter_java_jar_path.shellescape}",
-        'com.apple.transporter.Application',
+        java_code_option,
         '-m lookupMetadata',
         "-u #{username.shellescape}",
         "-p #{password.shellescape}",
         "-apple_id #{apple_id.shellescape}",
         "-destination #{destination.shellescape}",
+        ("-itc_provider #{provider_short_name}" unless provider_short_name.to_s.empty?),
         '2>&1' # cause stderr to be written to stdout
-      ].join(' ')
+      ].compact.join(' ')
+    end
+
+    def java_code_option
+      if Helper.xcode_at_least?(9)
+        return "-jar #{Helper.transporter_java_jar_path.shellescape}"
+      else
+        return "-classpath #{Helper.transporter_java_jar_path.shellescape} com.apple.transporter.Application"
+      end
     end
 
     def handle_error(password)
@@ -245,9 +278,11 @@ module FastlaneCore
   end
 
   class ItunesTransporter
+    TWO_STEP_HOST_PREFIX = "deliver.appspecific"
+
     # This will be called from the Deliverfile, and disables the logging of the transporter output
     def self.hide_transporter_output
-      @hide_transporter_output = !$verbose
+      @hide_transporter_output = !FastlaneCore::Globals.verbose?
     end
 
     def self.hide_transporter_output?
@@ -260,16 +295,23 @@ module FastlaneCore
     # @param use_shell_script if true, forces use of the iTMSTransporter shell script.
     #                         if false, allows a direct call to the iTMSTransporter Java app (preferred).
     #                         see: https://github.com/fastlane/fastlane/pull/4003
-    def initialize(user = nil, password = nil, use_shell_script = false)
+    # @param provider_short_name The provider short name to be given to the iTMSTransporter to identify the
+    #                            correct team for this work. The provider short name is usually your Developer
+    #                            Portal team ID, but in certain cases it is different!
+    #                            see: https://github.com/fastlane/fastlane/issues/1524#issuecomment-196370628
+    #                            for more information about how to use the iTMSTransporter to list your provider
+    #                            short names
+    def initialize(user = nil, password = nil, use_shell_script = false, provider_short_name = nil)
       # Xcode 6.x doesn't have the same iTMSTransporter Java setup as later Xcode versions, so
       # we can't default to using the better direct Java invocation strategy for those versions.
-      use_shell_script ||= Helper.xcode_version.start_with?('6.')
-      use_shell_script ||= !ENV['FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT'].nil?
-      data = CredentialsManager::AccountManager.new(user: user, password: password)
+      use_shell_script ||= Helper.is_mac? && Helper.xcode_version.start_with?('6.')
+      use_shell_script ||= Feature.enabled?('FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT')
 
-      @user = data.user
-      @password = data.password
+      @user = user
+      @password = password || load_password_for_transporter
+
       @transporter_executor = use_shell_script ? ShellScriptTransporterExecutor.new : JavaTransporterExecutor.new
+      @provider_short_name = provider_short_name
     end
 
     # Downloads the latest version of the app metadata package from iTC.
@@ -277,15 +319,21 @@ module FastlaneCore
     # @param dir [String] the path in which the package file should be stored
     # @return (Bool) True if everything worked fine
     # @raise [Deliver::TransporterTransferError] when something went wrong
-    #   when transfering
+    #   when transferring
     def download(app_id, dir = nil)
       dir ||= "/tmp"
 
       UI.message("Going to download app metadata from iTunes Connect")
-      command = @transporter_executor.build_download_command(@user, @password, app_id, dir)
-      UI.verbose(@transporter_executor.build_download_command(@user, 'YourPassword', app_id, dir))
+      command = @transporter_executor.build_download_command(@user, @password, app_id, dir, @provider_short_name)
+      UI.verbose(@transporter_executor.build_download_command(@user, 'YourPassword', app_id, dir, @provider_short_name))
 
-      result = @transporter_executor.execute(command, ItunesTransporter.hide_transporter_output?)
+      begin
+        result = @transporter_executor.execute(command, ItunesTransporter.hide_transporter_output?)
+      rescue TransporterRequiresApplicationSpecificPasswordError => ex
+        handle_two_step_failure(ex)
+        return download(app_id, dir)
+      end
+
       return result if Helper.is_test?
 
       itmsp_path = File.join(dir, "#{app_id}.itmsp")
@@ -305,25 +353,27 @@ module FastlaneCore
     # @param dir [String] the path in which the package file is located
     # @return (Bool) True if everything worked fine
     # @raise [Deliver::TransporterTransferError] when something went wrong
-    #   when transfering
+    #   when transferring
     def upload(app_id, dir)
-      dir = File.join(dir, "#{app_id}.itmsp")
+      actual_dir = File.join(dir, "#{app_id}.itmsp")
 
       UI.message("Going to upload updated app to iTunes Connect")
-      UI.success("This might take a few minutes, please don't interrupt the script")
+      UI.success("This might take a few minutes. Please don't interrupt the script.")
 
-      command = @transporter_executor.build_upload_command(@user, @password, dir)
+      command = @transporter_executor.build_upload_command(@user, @password, actual_dir, @provider_short_name)
+      UI.verbose(@transporter_executor.build_upload_command(@user, 'YourPassword', actual_dir, @provider_short_name))
 
-      UI.verbose(@transporter_executor.build_upload_command(@user, 'YourPassword', dir))
-
-      result = @transporter_executor.execute(command, ItunesTransporter.hide_transporter_output?)
+      begin
+        result = @transporter_executor.execute(command, ItunesTransporter.hide_transporter_output?)
+      rescue TransporterRequiresApplicationSpecificPasswordError => ex
+        handle_two_step_failure(ex)
+        return upload(app_id, dir)
+      end
 
       if result
-        UI.success("-" * 102)
-        UI.success("Successfully uploaded package to iTunes Connect. It might take a few minutes until it's visible online.")
-        UI.success("-" * 102)
+        UI.header("Successfully uploaded package to iTunes Connect. It might take a few minutes until it's visible online.")
 
-        FileUtils.rm_rf(dir) unless Helper.is_test? # we don't need the package any more, since the upload was successful
+        FileUtils.rm_rf(actual_dir) unless Helper.is_test? # we don't need the package any more, since the upload was successful
       else
         handle_error(@password)
       end
@@ -332,6 +382,57 @@ module FastlaneCore
     end
 
     private
+
+    TWO_FACTOR_ENV_VARIABLE = "FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD"
+
+    # Returns the password to be used with the transporter
+    def load_password_for_transporter
+      # 3 different sources for the password
+      #   1) ENV variable for application specific password
+      if ENV[TWO_FACTOR_ENV_VARIABLE].to_s.length > 0
+        UI.message("Fetching password for transporter from environment variable named `#{TWO_FACTOR_ENV_VARIABLE}`")
+        return ENV[TWO_FACTOR_ENV_VARIABLE]
+      end
+      #   2) TWO_STEP_HOST_PREFIX from keychain
+      account_manager = CredentialsManager::AccountManager.new(user: @user,
+                                                             prefix: TWO_STEP_HOST_PREFIX,
+                                                               note: "application-specific")
+      password = account_manager.password(ask_if_missing: false)
+      return password if password.to_s.length > 0
+      #   3) standard iTC password
+      account_manager = CredentialsManager::AccountManager.new(user: @user)
+      return account_manager.password(ask_if_missing: true)
+    end
+
+    # Tells the user how to get an application specific password
+    def handle_two_step_failure(ex)
+      if ENV[TWO_FACTOR_ENV_VARIABLE].to_s.length > 0
+        # Password provided, however we already used it
+        UI.error("Application specific password you provided using #{TWO_FACTOR_ENV_VARIABLE}")
+        UI.error("is invalid, please make sure it's correct")
+        UI.user_error!("Invalid application specific password provided")
+      end
+
+      a = CredentialsManager::AccountManager.new(user: @user,
+                                               prefix: TWO_STEP_HOST_PREFIX,
+                                                 note: "application-specific")
+      if a.password(ask_if_missing: false).to_s.length > 0
+        # user already entered one.. delete the old one
+        UI.error("Application specific password seems wrong")
+        UI.error("Please make sure to follow the instructions")
+        a.remove_from_keychain
+      end
+      UI.error("Your account has 2 step verification enabled")
+      UI.error("Please go to https://appleid.apple.com/account/manage")
+      UI.error("and generate an application specific password for")
+      UI.error("the iTunes Transporter, which is used to upload builds")
+      UI.error("To set the application specific password on a CI machine using")
+      UI.error("an environment variable, you can set the")
+      UI.error("#{TWO_FACTOR_ENV_VARIABLE} variable")
+      @password = a.password(ask_if_missing: true) # to ask the user for the missing value
+
+      return true
+    end
 
     def handle_error(password)
       @transporter_executor.handle_error(password)

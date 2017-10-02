@@ -6,20 +6,11 @@ module Fastlane
 
         require 'frameit'
 
-        begin
-          FastlaneCore::UpdateChecker.start_looking_for_update('frameit') unless Helper.is_test?
-          color = Frameit::Color::BLACK
-          color = Frameit::Color::SILVER if config[:white] || config[:silver]
+        UI.message("Framing screenshots at path #{config[:path]}")
 
-          UI.message("Framing screenshots at path #{config[:path]}")
-
-          Dir.chdir(config[:path]) do
-            ENV["FRAMEIT_FORCE_DEVICE_TYPE"] = config[:force_device_type] if config[:force_device_type]
-            Frameit::Runner.new.run('.', color)
-            ENV.delete("FRAMEIT_FORCE_DEVICE_TYPE") if config[:force_device_type]
-          end
-        ensure
-          FastlaneCore::UpdateChecker.show_update_status('frameit', Frameit::VERSION)
+        Dir.chdir(config[:path]) do
+          Frameit.config = config
+          Frameit::Runner.new.run('.')
         end
       end
 
@@ -27,36 +18,39 @@ module Fastlane
         "Adds device frames around the screenshots using frameit"
       end
 
-      def self.available_options
+      def self.details
         [
-          FastlaneCore::ConfigItem.new(key: :white,
-                                         env_name: "FRAMEIT_WHITE_FRAME",
-                                         description: "Use white device frames",
-                                         optional: true,
-                                         is_string: false),
-          FastlaneCore::ConfigItem.new(key: :silver,
-                                       description: "Use white device frames. Alias for :white",
-                                       optional: true,
-                                       is_string: false),
+          "Use [frameit](https://github.com/fastlane/fastlane/tree/master/frameit) to prepare perfect screenshots for the App Store, your website, QA",
+          "or emails. You can add background and titles to the framed screenshots as well."
+        ].join("\n")
+      end
+
+      def self.available_options
+        require "frameit"
+        require "frameit/options"
+        FastlaneCore::CommanderGenerator.new.generate(Frameit::Options.available_options) + [
           FastlaneCore::ConfigItem.new(key: :path,
                                        env_name: "FRAMEIT_SCREENSHOTS_PATH",
                                        description: "The path to the directory containing the screenshots",
-                                       default_value: Actions.lane_context[SharedValues::SNAPSHOT_SCREENSHOTS_PATH] || FastlaneFolder.path),
-          FastlaneCore::ConfigItem.new(key: :force_device_type,
-                                       env_name: "FRAMEIT_FORCE_DEVICE_TYPE",
-                                       description: "Forces a given device type, useful for Mac screenshots, as their sizes vary",
-                                       optional: true,
-                                       verify_block: proc do |value|
-                                         available = ['iPhone_6_Plus', 'iPhone_5s', 'iPhone_4', 'iPad_mini', 'Mac']
-                                         unless available.include? value
-                                           UI.user_error!("Invalid device type '#{value}'. Available values: #{available}")
-                                         end
-                                       end)
+                                        default_value: Actions.lane_context[SharedValues::SNAPSHOT_SCREENSHOTS_PATH] || FastlaneCore::FastlaneFolder.path)
         ]
       end
 
       def self.author
         "KrauseFx"
+      end
+
+      def self.example_code
+        [
+          'frameit',
+          'frameit(silver: true)',
+          'frameit(path: "/screenshots")',
+          'frameit(rose_gold: true)'
+        ]
+      end
+
+      def self.category
+        :screenshots
       end
 
       def self.is_supported?(platform)

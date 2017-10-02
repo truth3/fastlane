@@ -9,11 +9,11 @@ module Fastlane
 
         if Helper.is_ci? || Helper.is_test?
           # The "BUILD_URL" environment variable is set automatically by Jenkins in every build
-          jenkins_xml_url = URI(ENV["BUILD_URL"] + "api/json\?wrapper\=changes\&xpath\=//changeSet//comment")
+          jenkins_api_url = URI(ENV["BUILD_URL"] + "api/json\?wrapper\=changes\&xpath\=//changeSet//comment")
           begin
-            json = JSON.parse(Net::HTTP.get(jenkins_xml_url))
+            json = JSON.parse(Net::HTTP.get(jenkins_api_url))
             json['changeSet']['items'].each do |item|
-              comment = item['comment']
+              comment = params[:include_commit_body] ? item['comment'] : item['msg']
               changelog << comment.strip + "\n"
             end
           rescue => ex
@@ -37,7 +37,12 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :fallback_changelog,
                                        description: "Fallback changelog if there is not one on Jenkins, or it couldn't be read",
                                        optional: true,
-                                       default_value: "")
+                                       default_value: ""),
+          FastlaneCore::ConfigItem.new(key: :include_commit_body,
+                                       description: "Include the commit body along with the summary",
+                                       optional: true,
+                                       is_string: false,
+                                       default_value: true)
         ]
       end
 
@@ -53,6 +58,19 @@ module Fastlane
 
       def self.is_supported?(platform)
         true
+      end
+
+      def self.example_code
+        [
+          'make_changelog_from_jenkins(
+            # Optional, lets you set a changelog in the case is not generated on Jenkins or if ran outside of Jenkins
+            fallback_changelog: "Bug fixes and performance enhancements"
+          )'
+        ]
+      end
+
+      def self.category
+        :misc
       end
     end
   end

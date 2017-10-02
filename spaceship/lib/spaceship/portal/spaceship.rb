@@ -44,6 +44,16 @@ module Spaceship
         Spaceship::App.set_client(@client)
       end
 
+      # @return (Class) Access the pass types for the spaceship
+      def passbook
+        Spaceship::Passbook.set_client(@client)
+      end
+
+      # @return (Class) Access the website pushes for the spaceship
+      def website_push
+        Spaceship::WebsitePush.set_client(@client)
+      end
+
       # @return (Class) Access the app groups for the spaceship
       def app_group
         Spaceship::AppGroup.set_client(@client)
@@ -68,6 +78,11 @@ module Spaceship
       def provisioning_profile
         Spaceship::ProvisioningProfile.set_client(@client)
       end
+
+      # @return (Class) Access the merchants for the spaceship
+      def merchant
+        Spaceship::Merchant.set_client(@client)
+      end
     end
   end
 
@@ -83,6 +98,14 @@ module Spaceship
 
     def app
       Spaceship::Portal.app
+    end
+
+    def passbook
+      Spaceship::Portal.passbook
+    end
+
+    def website_push
+      Spaceship::Portal.website_push
     end
 
     def app_group
@@ -107,6 +130,10 @@ module Spaceship
 
     def client
       Spaceship::Portal.client
+    end
+
+    def merchant
+      Spaceship::Portal.merchant
     end
   end
 end

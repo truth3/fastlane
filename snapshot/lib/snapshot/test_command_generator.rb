@@ -1,94 +1,73 @@
+require 'snapshot/test_command_generator_base'
+
 module Snapshot
   # Responsible for building the fully working xcodebuild command
-  class TestCommandGenerator
+  # Xcode 9 introduced the ability to run tests in parallel on multiple simulators
+  # This TestCommandGenerator constructs the appropriate `xcodebuild` command
+  # to be used for executing simultaneous tests
+  class TestCommandGenerator < TestCommandGeneratorBase
     class << self
-      def generate(device_type: nil)
+      def generate(devices: nil, language: nil, locale: nil, log_path: nil)
         parts = prefix
         parts << "xcodebuild"
         parts += options
-        parts += destination(device_type)
+        parts += destination(devices)
+        parts += build_settings
         parts += actions
         parts += suffix
-        parts += pipe
+        parts += pipe(language: language, locale: locale, log_path: log_path)
 
-        parts
+        return parts
       end
 
-      def prefix
-        ["set -o pipefail &&"]
+      def pipe(language: nil, locale: nil, log_path: nil)
+        tee_command = ['tee']
+        tee_command << '-a' if log_path && File.exist?(log_path)
+        tee_command << log_path.shellescape if log_path
+        return ["| #{tee_command.join(' ')} | xcpretty #{Snapshot.config[:xcpretty_args]}"]
       end
 
-      # Path to the project or workspace as parameter
-      # This will also include the scheme (if given)
-      # @return [Array] The array with all the components to join
-      def project_path_array
-        proj = Snapshot.project.xcodebuild_parameters
-        return proj if proj.count > 0
-        UI.user_error!("No project/workspace found")
-      end
+      def destination(devices)
+        unless verify_devices_share_os(devices)
+          UI.user_error!('All devices provided to snapshot should run the same operating system')
+        end
+        # on Mac we will always run on host machine, so should specify only platform
+        return ["-destination 'platform=macOS'"] if devices.first.to_s =~ /^Mac/
 
-      def options
-        config = Snapshot.config
+        os = devices.first.to_s =~ /^Apple TV/ ? "tvOS" : "iOS"
 
-        options = []
-        options += project_path_array
-        options << "-configuration '#{config[:configuration]}'" if config[:configuration]
-        options << "-sdk '#{config[:sdk]}'" if config[:sdk]
-        options << "-derivedDataPath '#{derived_data_path}'"
+        os_version = Snapshot.config[:ios_version] || Snapshot::LatestOsVersion.version(os)
 
-        options
-      end
-
-      def actions
-        actions = []
-        actions << :clean if Snapshot.config[:clean]
-        actions << :build # https://github.com/fastlane/snapshot/issues/246
-        actions << :test
-
-        actions
-      end
-
-      def suffix
-        []
-      end
-
-      def pipe
-        ["| tee #{xcodebuild_log_path.shellescape} | xcpretty #{Snapshot.config[:xcpretty_args]}"]
-      end
-
-      def device_udid(device)
-        # we now fetch the device's udid. Why? Because we might get this error message
-        # > The requested device could not be found because multiple devices matched the request.
-        #
-        # This happens when you have multiple simulators for a given device type / iOS combination
-        #   { platform:iOS Simulator, id:1685B071-AFB2-4DC1-BE29-8370BA4A6EBD, OS:9.0, name:iPhone 5 }
-        #   { platform:iOS Simulator, id:A141F23B-96B3-491A-8949-813B376C28A7, OS:9.0, name:iPhone 5 }
-        #
-
-        device_udid = nil
-        FastlaneCore::Simulator.all.each do |sim|
-          device_udid = sim.udid if sim.name.strip == device.strip and sim.ios_version == Snapshot.config[:ios_version]
+        destinations = devices.map do |d|
+          device = find_device(d, os_version)
+          UI.user_error!("No device found named '#{d}' for version '#{os_version}'") if device.nil?
+          "-destination 'platform=#{os} Simulator,name=#{device.name},OS=#{os_version}'"
         end
 
-        return device_udid
+        return [destinations.join(' ')]
       end
 
-      def destination(device)
-        value = "platform=iOS Simulator,id=#{device_udid(device)},OS=#{Snapshot.config[:ios_version]}"
+      def verify_devices_share_os(devices)
+        # Check each device to see if it is an iOS device
+        all_ios = devices.map do |device|
+          device = device.downcase
+          device.start_with?('iphone', 'ipad')
+        end
+        # Return true if all devices are iOS devices
+        return true unless all_ios.include?(false)
 
-        return ["-destination '#{value}'"]
-      end
+        all_tvos = devices.map do |device|
+          device = device.downcase
+          device.start_with?('apple tv')
+        end
+        # Return true if all devices are iOS devices
+        return true unless all_tvos.include?(false)
 
-      def xcodebuild_log_path
-        file_name = "#{Snapshot.project.app_name}-#{Snapshot.config[:scheme]}.log"
-        containing = File.expand_path(Snapshot.config[:buildlog_path])
-        FileUtils.mkdir_p(containing)
-
-        return File.join(containing, file_name)
-      end
-
-      def derived_data_path
-        Snapshot.cache[:derived_data_path] ||= (Snapshot.config[:derived_data_path] || Dir.mktmpdir("snapshot_derived"))
+        # There should only be more than 1 device type if
+        # it is iOS or tvOS, therefore, if there is more than 1
+        # device in the array, and they are not all iOS or tvOS
+        # as checked above, that would imply that this is a mixed bag
+        return devices.count == 1
       end
     end
   end

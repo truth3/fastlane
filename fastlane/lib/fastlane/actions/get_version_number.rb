@@ -24,27 +24,55 @@ module Fastlane
 
         line = ""
         scheme = params[:scheme] || ""
+        target = params[:target] || ""
         results = []
 
         if Helper.test?
           results = [
-            '"SampleProject.xcodeproj/../SchemeA/SchemeA-Info.plist"=4.3.2',
-            '"SampleProject.xcodeproj/../SchemeATests/Info.plist"=4.3.2',
-            '"SampleProject.xcodeproj/../SchemeB/SchemeB-Info.plist"=5.4.3',
-            '"SampleProject.xcodeproj/../SchemeBTests/Info.plist"=5.4.3'
+            '$(date +%s)n    /usr/libexec/Plistbuddy -c "Set CFBundleVersion $buildnum" "${plist}"n',
+            '"SampleProject.xcodeproj/../TargetA/TargetA-Info.plist"=4.3.2',
+            '"SampleProject.xcodeproj/../TargetATests/Info.plist"=4.3.2',
+            '"SampleProject.xcodeproj/../TargetB/TargetB-Info.plist"=5.4.3',
+            '"SampleProject.xcodeproj/../TargetBTests/Info.plist"=5.4.3',
+            '"SampleProject.xcodeproj/../SampleProject/supporting_files/TargetC_internal-Info.plist"=7.5.2',
+            '"SampleProject.xcodeproj/../SampleProject/supporting_files/TargetC_production-Info.plist"=6.4.9',
+            '"SampleProject.xcodeproj/../SampleProject_tests/Info.plist"=1.0'
           ]
         else
           results = (Actions.sh command).split("\n")
         end
 
-        if scheme.empty?
-          line = results.first unless results.first.nil?
-        else
-          scheme_string = "/#{scheme}/"
+        if target.empty? && scheme.empty?
+          # Sometimes the results array contains nonsense as the first element
+          # This iteration finds the first 'real' result and returns that
+          # emulating the actual behavior or the -terse1 flag correctly
+          project_string = ".xcodeproj"
           results.any? do |result|
-            if result.include? scheme_string
+            if result.include? project_string
               line = result
               break
+            end
+          end
+        else
+          # This iteration finds the first folder structure or info plist
+          # matching the specified target
+          scheme_string = "/#{scheme}"
+          target_string = "/#{target}/"
+          plist_target_string = "/#{target}-"
+          results.any? do |result|
+            if !target.empty?
+              if result.include? target_string
+                line = result
+                break
+              elsif result.include? plist_target_string
+                line = result
+                break
+              end
+            else
+              if result.include? scheme_string
+                line = result
+                break
+              end
             end
           end
         end
@@ -55,7 +83,7 @@ module Fastlane
         # Store the number in the shared hash
         Actions.lane_context[SharedValues::VERSION_NUMBER] = version_number
       rescue => ex
-        UI.error('Make sure to follow the steps to setup your Xcode project: https://developer.apple.com/library/ios/qa/qa1827/_index.html')
+        UI.error('Before being able to increment and read the version number from your Xcode project, you first need to setup your project properly. Please follow the guide at https://developer.apple.com/library/content/qa/qa1827/_index.html')
         raise ex
       end
 
@@ -87,7 +115,15 @@ module Fastlane
                              end),
           FastlaneCore::ConfigItem.new(key: :scheme,
                              env_name: "FL_VERSION_NUMBER_SCHEME",
-                             description: "Specify a specific scheme if you have multiple per project, optional",
+                             description: "Specify a specific scheme if you have multiple per project, optional.
+                                          This parameter is deprecated and will be removed in a future release.
+                                          Please use the 'target' parameter instead. The behavior of this parameter
+                                          is currently undefined if your scheme name doesn't match your target name",
+                             optional: true,
+                             deprecated: true),
+          FastlaneCore::ConfigItem.new(key: :target,
+                             env_name: "FL_VERSION_NUMBER_TARGET",
+                             description: "Specify a specific target if you have multiple per project, optional",
                              optional: true)
         ]
       end
@@ -104,6 +140,16 @@ module Fastlane
 
       def self.is_supported?(platform)
         [:ios, :mac].include? platform
+      end
+
+      def self.example_code
+        [
+          'version = get_version_number(xcodeproj: "Project.xcodeproj")'
+        ]
+      end
+
+      def self.category
+        :project
       end
     end
   end

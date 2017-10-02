@@ -18,8 +18,10 @@
   <a href="https://github.com/fastlane/boarding">boarding</a> &bull;
   <a href="https://github.com/fastlane/fastlane/tree/master/gym">gym</a> &bull;
   <a href="https://github.com/fastlane/fastlane/tree/master/scan">scan</a> &bull;
-  <a href="https://github.com/fastlane/fastlane/tree/master/match">match</a>
+  <a href="https://github.com/fastlane/fastlane/tree/master/match">match</a> &bull;
+  <a href="https://github.com/fastlane/fastlane/tree/master/precheck">precheck</a>
 </p>
+
 -------
 
 <p align="center">
@@ -31,16 +33,15 @@ deliver
 
 [![Twitter: @FastlaneTools](https://img.shields.io/badge/contact-@FastlaneTools-blue.svg?style=flat)](https://twitter.com/FastlaneTools)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://github.com/fastlane/fastlane/blob/master/deliver/LICENSE)
-[![Gem](https://img.shields.io/gem/v/deliver.svg?style=flat)](http://rubygems.org/gems/deliver)
-[![Build Status](https://img.shields.io/circleci/project/fastlane/fastlane/master.svg?style=flat)](https://circleci.com/gh/fastlane/fastlane)
 
 ###### Upload screenshots, metadata and your app to the App Store using a single command
 
-`deliver` can upload ipa or pkg files, app screenshots and more to iTunes Connect from the command line.
+`deliver` uploads screenshots, metadata and binaries to iTunes Connect. Use `deliver` to submit your app for App Store review.
 
 Get in contact with the developer on Twitter: [@FastlaneTools](https://twitter.com/FastlaneTools)
 
 -------
+
 <p align="center">
     <a href="#features">Features</a> &bull;
     <a href="#installation">Installation</a> &bull;
@@ -52,7 +53,7 @@ Get in contact with the developer on Twitter: [@FastlaneTools](https://twitter.c
 
 -------
 
-<h5 align="center"><code>deliver</code> is part of <a href="https://fastlane.tools">fastlane</a>: connect all deployment tools into one streamlined workflow.</h5>
+<h5 align="center"><code>deliver</code> is part of <a href="https://fastlane.tools">fastlane</a>: The easiest way to automate beta deployments and releases for your iOS and Android apps.</h5>
 
 # Features
 - Upload hundreds of localised screenshots completely automatically
@@ -61,16 +62,17 @@ Get in contact with the developer on Twitter: [@FastlaneTools](https://twitter.c
 - Easily implement a real Continuous Deployment process using [fastlane](https://fastlane.tools)
 - Store the configuration in git to easily deploy from **any** Mac, including your Continuous Integration server
 - Get a HTML preview of the fetched metadata before uploading the app metadata and screenshots to iTC
+- Automatically uses [precheck](https://github.com/fastlane/fastlane/tree/master/precheck) to ensure your app has the highest chances of passing app review the first time
 
 To upload builds to TestFlight check out [pilot](https://github.com/fastlane/fastlane/tree/master/pilot).
 
-##### [Like this tool? Be the first to know about updates and new fastlane tools](https://tinyletter.com/krausefx)
+##### [Do you like fastlane? Be the first to know about updates and new fastlane tools](https://tinyletter.com/fastlane-tools)
 
 # Installation
 
 Install the gem
 
-    sudo gem install deliver
+    sudo gem install fastlane
 
 Make sure, you have the latest version of the Xcode command line tools installed:
 
@@ -81,14 +83,12 @@ Make sure, you have the latest version of the Xcode command line tools installed
 The guide will create all the necessary files for you, using the existing app metadata from iTunes Connect.
 
 - ```cd [your_project_folder]```
-- ```deliver init```
+- ```fastlane deliver init```
 - Enter your iTunes Connect credentials
 - Enter your app identifier
 - Enjoy a good drink, while the computer does all the work for you
 
-From now on, you can run `deliver` to deploy a new update, or just upload new app metadata and screenshots.
-
-Already using `deliver` and just updated to 1.0? Check out the [Migration Guide](https://github.com/fastlane/fastlane/blob/master/deliver/MigrationGuide.md).
+From now on, you can run `fastlane deliver` to deploy a new update, or just upload new app metadata and screenshots.
 
 # Usage
 
@@ -98,22 +98,22 @@ Check out your local `./fastlane/metadata` and `./fastlane/screenshots` folders 
 
 You'll see your metadata from iTunes Connect. Feel free to store the metadata in git (not the screenshots). You can now modify it locally and push the changes back to iTunes Connect.
 
-Run `deliver` to upload the app metadata from your local machine
+Run `fastlane deliver` to upload the app metadata from your local machine
 
 ```
-deliver
+fastlane deliver
 ```
 
 Provide the path to an `ipa` file to upload and submit your app for review:
 
 ```
-deliver --ipa "App.ipa" --submit_for_review
+fastlane deliver --ipa "App.ipa" --submit_for_review
 ```
 
-or you can specify path to `pkg` file for Mac OS X apps:
+or you can specify path to `pkg` file for macOS apps:
 
 ```
-deliver --pkg "MacApp.pkg"
+fastlane deliver --pkg "MacApp.pkg"
 ```
 
 If you use [fastlane](https://fastlane.tools) you don't have to manually specify the path to your `ipa`/`pkg` file.
@@ -123,20 +123,26 @@ This is just a small sub-set of what you can do with `deliver`, check out the fu
 Download existing screenshots from iTunes Connect
 
 ```
-deliver download_screenshots
+fastlane deliver download_screenshots
+```
+
+Download existing metadata from iTunes Connect
+
+```
+fastlane deliver download_metadata
 ```
 
 To get a list of available options run
 
 ```
-deliver --help
+fastlane deliver --help
 ```
 
 
 Select a previously uploaded build and submit it for review.
 
 ```
-deliver submit_build --build_number 830
+fastlane deliver submit_build --build_number 830
 ```
 
 Check out [Deliverfile.md](https://github.com/fastlane/fastlane/blob/master/deliver/Deliverfile.md) for more options.
@@ -147,9 +153,9 @@ Already using `deliver` and just updated to 1.0? Check out the [Migration Guide]
 
 A detailed description about how your credentials are handled is available in a [credentials_manager](https://github.com/fastlane/fastlane/tree/master/credentials_manager).
 
-### How does this thing even work? Is magic involved? 🎩###
+### How does this thing even work? Is magic involved? 🎩
 
-Your password will be stored in the Mac OS X keychain, but can also be passed using environment variables. (More information available on [CredentialsManager](https://github.com/fastlane/fastlane/tree/master/credentials_manager))
+Your password will be stored in the macOS keychain, but can also be passed using environment variables. (More information available on [CredentialsManager](https://github.com/fastlane/fastlane/tree/master/credentials_manager))
 
 Before actually uploading anything to iTunes, ```deliver``` will generate a HTML summary of the collected data.
 
@@ -162,7 +168,7 @@ Before actually uploading anything to iTunes, ```deliver``` will generate a HTML
 
 ## [`fastlane`](https://fastlane.tools) Toolchain
 
-- [`fastlane`](https://fastlane.tools): Connect all deployment tools into one streamlined workflow
+- [`fastlane`](https://fastlane.tools): The easiest way to automate beta deployments and releases for your iOS and Android apps
 - [`snapshot`](https://github.com/fastlane/fastlane/tree/master/snapshot): Automate taking localized screenshots of your iOS app on every device
 - [`frameit`](https://github.com/fastlane/fastlane/tree/master/frameit): Quickly put your screenshots into the right device frames
 - [`pem`](https://github.com/fastlane/fastlane/tree/master/pem): Automatically generate and renew your push notification profiles
@@ -175,8 +181,10 @@ Before actually uploading anything to iTunes, ```deliver``` will generate a HTML
 - [`gym`](https://github.com/fastlane/fastlane/tree/master/gym): Building your iOS apps has never been easier
 - [`scan`](https://github.com/fastlane/fastlane/tree/master/scan): The easiest way to run tests of your iOS and Mac app
 - [`match`](https://github.com/fastlane/fastlane/tree/master/match): Easily sync your certificates and profiles across your team using git
+- [`precheck`](https://github.com/fastlane/fastlane/tree/master/precheck): Check your app using a community driven set of App Store review rules to avoid being rejected
 
-##### [Like this tool? Be the first to know about updates and new fastlane tools](https://tinyletter.com/krausefx)
+
+##### [Do you like fastlane? Be the first to know about updates and new fastlane tools](https://tinyletter.com/fastlane-tools)
 
 ## Available language codes
 ```
@@ -187,13 +195,17 @@ no, en-US, en-CA, fi, ru, zh-Hans, nl-NL, zh-Hant, en-AU, id, de-DE, sv, ko, ms,
 
 Deliver has a special `default` language code which allows you to provide values that are not localised, and which will be used as defaults when you don’t provide a specific localised value.
 
-You can use this either in json within your deliverfile, or as a folder in your metadata file.
+In order to use `default`, you will need to tell `deliver` which languages your app uses. You can do this in either of two ways:
+1. Create the folders named with the language in the metadata folder (i.e. fastlane/metadata/en-US or fastlane/metadata/de-DE)
+2. Add the following to your `Deliverfile` `languages(['en-US','de-DE'])` 
+
+You can use this either in json within your `Deliverfile` and/or as folders in your metadata folder. `deliver` will take the union of both language sets from the `Deliverfile` and from the metadata folder and create on single set of languages which will be enabled.
 
 Imagine that you have localised data for the following language codes:  ```en-US, de-DE, el, it```
 
-You can set the following in your deliverfile
+You can set the following in your `Deliverfile`
 
-```
+```ruby
 release_notes({
   'default' => "Shiny and new”,
   'de-DE' => "glänzend und neu"
@@ -240,11 +252,11 @@ Detailed instructions about how to set up `deliver` and `fastlane` in `Jenkins` 
 `deliver` uses the iTunes Transporter to upload metadata and binaries. In case you are behind a firewall, you can specify a different transporter protocol using
 
 ```
-DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS="-t DAV" deliver
+DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS="-t DAV" fastlane deliver
 ```
 
 ## HTTP Proxy
-iTunes Transporter is a Java application bundled with Xcode. In addtion to utilizing the `DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS="-t DAV"`, you need to configure the transporter application to use the proxy independently from the system proxy or any environment proxy settings. You can find the configuration file within Xcode:
+iTunes Transporter is a Java application bundled with Xcode. In addition to utilizing the `DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS="-t DAV"`, you need to configure the transporter application to use the proxy independently from the system proxy or any environment proxy settings. You can find the configuration file within Xcode:
 
 ```bash
 TOOLS_PATH=$( xcode-select -p )
@@ -254,6 +266,12 @@ echo "$TOOLS_PATH/$REL_PATH"
 
 Add necessary proxy configuration values to the net.properties according to [Java Proxy Configuration](http://docs.oracle.com/javase/8/docs/technotes/guides/net/proxies.html).
 
+As an alternative to editing the properties files, proxy configuration can be specified on the command line directly:
+
+```bash
+DELIVER_ITMSTRANSPORTER_ADDITIONAL_UPLOAD_PARAMETERS="-t DAV -Dhttp.proxyHost=myproxy.com -Dhttp.proxyPort=8080"
+```
+
 ## Limit
 Apple has a limit of 150 binary uploads per day.
 
@@ -261,7 +279,14 @@ Apple has a limit of 150 binary uploads per day.
 Change syntax highlighting to *Ruby*.
 
 # Need help?
-Please submit an issue on GitHub and provide information about your setup
+
+Before submitting a new GitHub issue, please make sure to
+
+- Check out [docs.fastlane.tools](https://docs.fastlane.tools)
+- Check out the README pages on [this repo](https://github.com/fastlane/fastlane)
+- Search for [existing GitHub issues](https://github.com/fastlane/fastlane/issues)
+
+If the above doesn't help, please [submit an issue](https://github.com/fastlane/fastlane/issues) on GitHub and provide information about your setup, in particular the output of the `fastlane env` command.
 
 # Code of Conduct
 Help us keep `deliver` open and inclusive. Please read and follow our [Code of Conduct](https://github.com/fastlane/fastlane/blob/master/CODE_OF_CONDUCT.md).

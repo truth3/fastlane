@@ -1,3 +1,5 @@
+#!/bin/bash
+
 _fastlane_complete() {
   COMPREPLY=()
   local word="${COMP_WORDS[COMP_CWORD]}"
@@ -8,12 +10,13 @@ _fastlane_complete() {
     file="Fastfile"
   elif [[ -e "fastlane/Fastfile" ]]; then
     file="fastlane/Fastfile"
-  elif [[ -e ".fastlane/Fastfile" ]] then
+  elif [[ -e ".fastlane/Fastfile" ]]; then
     file=".fastlane/Fastfile"
   fi
 
   # parse 'beta' out of 'lane :beta do', etc
-  completions=`cat $file | grep "^\s*lane \:" | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}'`
+  completions=$(grep "^\s*lane \:" $file | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
+  completions="$completions update_fastlane"
 
   COMPREPLY=( $(compgen -W "$completions" -- "$word") )
 }

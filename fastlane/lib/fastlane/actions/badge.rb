@@ -2,6 +2,9 @@ module Fastlane
   module Actions
     class BadgeAction < Action
       def self.run(params)
+        UI.important('The badge action has been deprecated,')
+        UI.important('please checkout the badge plugin here:')
+        UI.important('https://github.com/HazAT/fastlane-plugin-badge')
         Actions.verify_gem!('badge')
         require 'badge'
         options = {
@@ -16,7 +19,13 @@ module Fastlane
           shield_gravity: params[:shield_gravity],
           shield_no_resize: params[:shield_no_resize]
         }
-        Badge::Runner.new.run(params[:path], options)
+        begin
+          Badge::Runner.new.run(params[:path], options)
+        rescue => e
+          # We want to catch this error and raise our own so that we are not counting this as a crash in our metrics
+          UI.verbose(e.backtrace.join("\n"))
+          UI.user_error!("Something went wrong while running badge: #{e}")
+        end
       end
 
       #####################################################
@@ -24,15 +33,29 @@ module Fastlane
       #####################################################
 
       def self.description
-        "Automatically add a badge to your iOS app icon"
+        "Automatically add a badge to your app icon"
       end
 
       def self.details
         [
           "This action will add a light/dark badge onto your app icon.",
           "You can also provide your custom badge/overlay or add an shield for more customization more info:",
-          "https://github.com/HazAT/badge"
+          "https://github.com/HazAT/badge",
+          "**Note** If you want to reset the badge back to default you can use `sh 'git checkout -- <path>/Assets.xcassets/'`"
         ].join("\n")
+      end
+
+      def self.example_code
+        [
+          'badge(dark: true)',
+          'badge(alpha: true)',
+          'badge(custom: "/Users/xxx/Desktop/badge.png")',
+          'badge(shield: "Version-0.0.3-blue", no_badge: true)'
+        ]
+      end
+
+      def self.category
+        :deprecated
       end
 
       def self.available_options
@@ -62,7 +85,7 @@ module Fastlane
                                        end),
           FastlaneCore::ConfigItem.new(key: :shield,
                                        env_name: "FL_BADGE_SHIELD",
-                                       description: "Add a shield to your app icon from shield.io",
+                                       description: "Add a shield to your app icon from shields.io",
                                        optional: true,
                                        is_string: true),
           FastlaneCore::ConfigItem.new(key: :alpha,
@@ -84,7 +107,7 @@ module Fastlane
                                        end),
           FastlaneCore::ConfigItem.new(key: :shield_io_timeout,
                                        env_name: "FL_BADGE_SHIELD_IO_TIMEOUT",
-                                       description: "Set custom duration for the timeout of the shield.io request in seconds",
+                                       description: "Set custom duration for the timeout of the shields.io request in seconds",
                                        optional: true,
                                        is_string: false,
                                        verify_block: proc do |value|
@@ -110,7 +133,7 @@ module Fastlane
                                        is_string: true),
           FastlaneCore::ConfigItem.new(key: :shield_no_resize,
                                        env_name: "FL_BADGE_SHIELD_NO_RESIZE",
-                                       description: "Shield image will no longer be resized to aspect fill the full icon. Instead it will only be shrinked to not exceed the icon graphic",
+                                       description: "Shield image will no longer be resized to aspect fill the full icon. Instead it will only be shrunk to not exceed the icon graphic",
                                        optional: true,
                                        is_string: false,
                                        verify_block: proc do |value|

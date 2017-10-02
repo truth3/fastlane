@@ -37,6 +37,7 @@ module Fastlane
          ##
          ##
          "
+        return "🚀"
       end
 
       #####################################################
@@ -45,6 +46,10 @@ module Fastlane
 
       def self.description
         "Outputs ascii-art for a rocket 🚀"
+      end
+
+      def self.details
+        "Print an ascii Rocket :rocket:. Useful after using _crashlytics_ or _pilot_ to indicate that your new build has been shipped to outer-space."
       end
 
       def self.available_options
@@ -58,6 +63,16 @@ module Fastlane
 
       def self.is_supported?(platform)
         true
+      end
+
+      def self.example_code
+        [
+          'rocket'
+        ]
+      end
+
+      def self.category
+        :misc
       end
     end
   end

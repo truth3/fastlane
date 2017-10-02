@@ -35,12 +35,20 @@ module Spaceship
           self::AppGroup
         end
 
+        def apple_pay
+          self::ApplePay
+        end
+
         def associated_domains
           self::AssociatedDomains
         end
 
         def data_protection
           self::DataProtection
+        end
+
+        def game_center
+          self::GameCenter
         end
 
         def health_kit
@@ -63,6 +71,10 @@ module Spaceship
           self::CloudKit
         end
 
+        def in_app_purchase
+          self::InAppPurchase
+        end
+
         def inter_app_audio
           self::InterAppAudio
         end
@@ -75,8 +87,28 @@ module Spaceship
           self::PushNotification
         end
 
+        def siri_kit
+          self::SiriKit
+        end
+
         def vpn_configuration
           self::VPNConfiguration
+        end
+
+        def network_extension
+          self::NetworkExtension
+        end
+
+        def hotspot
+          self::Hotspot
+        end
+
+        def multipath
+          self::Multipath
+        end
+
+        def nfc_tag_reading
+          self::NFCTagReading
         end
       end
 
@@ -97,6 +129,16 @@ module Spaceship
 
         def self.on
           AppService.new("APG3427HIY", true)
+        end
+      end
+
+      module ApplePay
+        def self.off
+          AppService.new("OM633U5T5G", false)
+        end
+
+        def self.on
+          AppService.new("OM633U5T5G", true)
         end
       end
 
@@ -125,6 +167,16 @@ module Spaceship
 
         def self.until_first_auth
           AppService.new("dataProtection", "untilfirstauth")
+        end
+      end
+
+      module GameCenter
+        def self.off
+          AppService.new("gameCenter", false)
+        end
+
+        def self.on
+          AppService.new("gameCenter", true)
         end
       end
 
@@ -178,6 +230,16 @@ module Spaceship
         end
       end
 
+      module InAppPurchase
+        def self.off
+          AppService.new("inAppPurchase", false)
+        end
+
+        def self.on
+          AppService.new("inAppPurchase", true)
+        end
+      end
+
       module InterAppAudio
         def self.off
           AppService.new("IAD53UNK2F", false)
@@ -208,6 +270,16 @@ module Spaceship
         end
       end
 
+      module SiriKit
+        def self.off
+          AppService.new("SI015DKUHP", false)
+        end
+
+        def self.on
+          AppService.new("SI015DKUHP", true)
+        end
+      end
+
       module VPNConfiguration
         def self.off
           AppService.new("V66P55NK2I", false)
@@ -215,6 +287,46 @@ module Spaceship
 
         def self.on
           AppService.new("V66P55NK2I", true)
+        end
+      end
+
+      module NetworkExtension
+        def self.off
+          AppService.new("NWEXT04537", false)
+        end
+
+        def self.on
+          AppService.new("NWEXT04537", true)
+        end
+      end
+
+      module Hotspot
+        def self.off
+          AppService.new("HSC639VEI8", false)
+        end
+
+        def self.on
+          AppService.new("HSC639VEI8", true)
+        end
+      end
+
+      module Multipath
+        def self.off
+          AppService.new("MP49FN762P", false)
+        end
+
+        def self.on
+          AppService.new("MP49FN762P", true)
+        end
+      end
+
+      module NFCTagReading
+        def self.off
+          AppService.new("NFCTRMAY17", false)
+        end
+
+        def self.on
+          AppService.new("NFCTRMAY17", true)
         end
       end
     end

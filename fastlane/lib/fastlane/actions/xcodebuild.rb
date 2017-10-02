@@ -3,6 +3,7 @@ module Fastlane
   module Actions
     module SharedValues
       XCODEBUILD_ARCHIVE = :XCODEBUILD_ARCHIVE
+      XCODEBUILD_DERIVED_DATA_PATH = :XCODEBUILD_DERIVED_DATA_PATH
     end
 
     # xcodebuild man page:
@@ -28,6 +29,7 @@ module Fastlane
         destination_timeout: "-destination-timeout",
         dry_run: "-dry-run",
         enableAddressSanitizer: "-enableAddressSanitizer",
+        enableThreadSanitizer: "-enableThreadSanitizer",
         enableCodeCoverage: "-enableCodeCoverage",
         export_archive: "-exportArchive",
         export_format: "-exportFormat",
@@ -55,6 +57,21 @@ module Fastlane
         [:ios, :mac].include? platform
       end
 
+      def self.example_code
+        [
+          'xcodebuild(
+            archive: true,
+            archive_path: "./build-dir/MyApp.xcarchive",
+            scheme: "MyApp",
+            workspace: "MyApp.xcworkspace"
+          )'
+        ]
+      end
+
+      def self.category
+        :building
+      end
+
       def self.run(params)
         unless Helper.test?
           UI.user_error!("xcodebuild not installed") if `which xcodebuild`.length == 0
@@ -72,6 +89,7 @@ module Fastlane
 
         # Set derived data path.
         params[:derivedDataPath] ||= ENV["XCODE_DERIVED_DATA_PATH"]
+        Actions.lane_context[SharedValues::XCODEBUILD_DERIVED_DATA_PATH] = params[:derivedDataPath]
 
         # Append slash to build path, if needed
         if build_path && !build_path.end_with?("/")
@@ -81,11 +99,15 @@ module Fastlane
         # By default we use xcpretty
         raw_buildlog = false
 
+        # By default we don't pass the utf flag
+        xcpretty_utf = false
+
         if params
           # Operation bools
           archiving    = params.key? :archive
           exporting    = params.key? :export_archive
           testing      = params.key? :test
+          xcpretty_utf = params[:xcpretty_utf]
 
           if params.key? :raw_buildlog
             raw_buildlog = params[:raw_buildlog]
@@ -130,6 +152,9 @@ module Fastlane
           if params.key? :enable_address_sanitizer
             params[:enableAddressSanitizer] = params[:enable_address_sanitizer] ? 'YES' : 'NO'
           end
+          if params.key? :enable_thread_sanitizer
+            params[:enableThreadSanitizer] = params[:enable_thread_sanitizer] ? 'YES' : 'NO'
+          end
           if params.key? :enable_code_coverage
             params[:enableCodeCoverage] = params[:enable_code_coverage] ? 'YES' : 'NO'
           end
@@ -144,7 +169,7 @@ module Fastlane
         end
 
         # By default we put xcodebuild.log in the Logs folder
-        buildlog_path ||= File.expand_path("~/Library/Logs/fastlane/xcbuild/#{Time.now.strftime('%F')}/#{Process.pid}")
+        buildlog_path ||= File.expand_path("#{FastlaneCore::Helper.buildlog_path}/fastlane/xcbuild/#{Time.now.strftime('%F')}/#{Process.pid}")
 
         # Joins args into space delimited string
         xcodebuild_args = xcodebuild_args.join(" ")
@@ -231,6 +256,9 @@ module Fastlane
 
         xcpretty_command = ""
         xcpretty_command = "| xcpretty #{xcpretty_args}" unless raw_buildlog
+        unless raw_buildlog
+          xcpretty_command = "#{xcpretty_command} --utf" if xcpretty_utf
+        end
 
         pipe_command = "| tee '#{buildlog_path}/xcodebuild.log' #{xcpretty_command}"
 
@@ -278,10 +306,12 @@ module Fastlane
           # Normalize some values
           export_options[:teamID] = CredentialsManager::AppfileConfig.try_fetch_value(:team_id) if !export_options[:teamID] && CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
           export_options[:onDemandResourcesAssetPacksBaseURL] = URI.escape(export_options[:onDemandResourcesAssetPacksBaseURL]) if export_options[:onDemandResourcesAssetPacksBaseURL]
-          export_options[:manifest][:appURL] = URI.escape(export_options[:manifest][:appURL]) if export_options[:manifest][:appURL]
-          export_options[:manifest][:displayImageURL] = URI.escape(export_options[:manifest][:displayImageURL]) if export_options[:manifest][:displayImageURL]
-          export_options[:manifest][:fullSizeImageURL] = URI.escape(export_options[:manifest][:fullSizeImageURL]) if export_options[:manifest][:fullSizeImageURL]
-          export_options[:manifest][:assetPackManifestURL] = URI.escape(export_options[:manifest][:assetPackManifestURL]) if export_options[:manifest][:assetPackManifestURL]
+          if export_options[:manifest]
+            export_options[:manifest][:appURL] = URI.escape(export_options[:manifest][:appURL]) if export_options[:manifest][:appURL]
+            export_options[:manifest][:displayImageURL] = URI.escape(export_options[:manifest][:displayImageURL]) if export_options[:manifest][:displayImageURL]
+            export_options[:manifest][:fullSizeImageURL] = URI.escape(export_options[:manifest][:fullSizeImageURL]) if export_options[:manifest][:fullSizeImageURL]
+            export_options[:manifest][:assetPackManifestURL] = URI.escape(export_options[:manifest][:assetPackManifestURL]) if export_options[:manifest][:assetPackManifestURL]
+          end
 
           # Saves options to plist
           path = "#{Tempfile.new('exportOptions').path}.plist"
@@ -346,12 +376,13 @@ module Fastlane
           ['output_style', 'Set the output format to one of: :standard (Colored UTF8 output, default), :basic (black & white ASCII output)'],
           ['buildlog_path', 'The path where the xcodebuild.log will be created, by default it is created in ~/Library/Logs/fastlane/xcbuild'],
           ['raw_buildlog', 'Set to true to see xcodebuild raw output. Default value is false'],
-          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\'']
+          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\''],
+          ['xcpretty_utf', 'Specifies xcpretty should use utf8 when reporting builds. This has no effect when raw_buildlog is specified.']
         ]
       end
 
       def self.details
-        "More information on GitHub: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/Actions.md#xcodebuild"
+        "**Note**: `xcodebuild` is a complex command, so it is recommended to use [gym](https://github.com/fastlane/fastlane/tree/master/gym) for building your ipa file and [scan](https://github.com/fastlane/fastlane/tree/master/scan) for testing your app instead."
       end
 
       def self.author
@@ -368,6 +399,16 @@ module Fastlane
 
       def self.description
         "Archives the project using `xcodebuild`"
+      end
+
+      def self.example_code
+        [
+          'xcarchive'
+        ]
+      end
+
+      def self.category
+        :building
       end
 
       def self.author
@@ -388,7 +429,8 @@ module Fastlane
           ['output_style', 'Set the output format to one of: :standard (Colored UTF8 output, default), :basic (black & white ASCII output)'],
           ['buildlog_path', 'The path where the xcodebuild.log will be created, by default it is created in ~/Library/Logs/fastlane/xcbuild'],
           ['raw_buildlog', 'Set to true to see xcodebuild raw output. Default value is false'],
-          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\'']
+          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\''],
+          ['xcpretty_utf', 'Specifies xcpretty should use utf8 when reporting builds. This has no effect when raw_buildlog is specified.']
         ]
       end
     end
@@ -398,6 +440,16 @@ module Fastlane
         params_hash = params || {}
         params_hash[:build] = true
         XcodebuildAction.run(params_hash)
+      end
+
+      def self.example_code
+        [
+          'xcbuild'
+        ]
+      end
+
+      def self.category
+        :building
       end
 
       def self.description
@@ -423,7 +475,8 @@ module Fastlane
           ['output_style', 'Set the output format to one of: :standard (Colored UTF8 output, default), :basic (black & white ASCII output)'],
           ['buildlog_path', 'The path where the xcodebuild.log will be created, by default it is created in ~/Library/Logs/fastlane/xcbuild'],
           ['raw_buildlog', 'Set to true to see xcodebuild raw output. Default value is false'],
-          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\'']
+          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\''],
+          ['xcpretty_utf', 'Specifies xcpretty should use utf8 when reporting builds. This has no effect when raw_buildlog is specified.']
         ]
       end
     end
@@ -437,6 +490,16 @@ module Fastlane
 
       def self.description
         "Cleans the project using `xcodebuild`"
+      end
+
+      def self.example_code
+        [
+          'xcclean'
+        ]
+      end
+
+      def self.category
+        :building
       end
 
       def self.author
@@ -458,7 +521,8 @@ module Fastlane
           ['output_style', 'Set the output format to one of: :standard (Colored UTF8 output, default), :basic (black & white ASCII output)'],
           ['buildlog_path', 'The path where the xcodebuild.log will be created, by default it is created in ~/Library/Logs/fastlane/xcbuild'],
           ['raw_buildlog', 'Set to true to see xcodebuild raw output. Default value is false'],
-          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\'']
+          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\''],
+          ['xcpretty_utf', 'Specifies xcpretty should use utf8 when reporting builds. This has no effect when raw_buildlog is specified.']
         ]
       end
     end
@@ -472,6 +536,16 @@ module Fastlane
 
       def self.description
         "Exports the project using `xcodebuild`"
+      end
+
+      def self.example_code
+        [
+          'xcexport'
+        ]
+      end
+
+      def self.category
+        :building
       end
 
       def self.author
@@ -489,7 +563,8 @@ module Fastlane
           ['output_style', 'Set the output format to one of: :standard (Colored UTF8 output, default), :basic (black & white ASCII output)'],
           ['buildlog_path', 'The path where the xcodebuild.log will be created, by default it is created in ~/Library/Logs/fastlane/xcbuild'],
           ['raw_buildlog', 'Set to true to see xcodebuild raw output. Default value is false'],
-          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\'']
+          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\''],
+          ['xcpretty_utf', 'Specifies xcpretty should use utf8 when reporting builds. This has no effect when raw_buildlog is specified.']
         ]
       end
 
@@ -506,6 +581,18 @@ module Fastlane
         params_hash[:test] = true
 
         XcodebuildAction.run(params_hash)
+      end
+
+      def self.example_code
+        [
+          'xctest(
+            destination: "name=iPhone 7s,OS=10.0"
+          )'
+        ]
+      end
+
+      def self.category
+        :building
       end
 
       def self.description
@@ -526,7 +613,8 @@ module Fastlane
           ['output_style', 'Set the output format to one of: :standard (Colored UTF8 output, default), :basic (black & white ASCII output)'],
           ['buildlog_path', 'The path where the xcodebuild.log will be created, by default it is created in ~/Library/Logs/fastlane/xcbuild'],
           ['raw_buildlog', 'Set to true to see xcodebuild raw output. Default value is false'],
-          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\'']
+          ['xcpretty_output', 'specifies the output type for xcpretty. eg. \'test\', or \'simple\''],
+          ['xcpretty_utf', 'Specifies xcpretty should use utf8 when reporting builds. This has no effect when raw_buildlog is specified.']
         ]
       end
 
